@@ -40,6 +40,8 @@ C_SOURCE_FILES += \
 $(abspath ../../../main.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
 $(abspath ../../../../components/libraries/util/app_error.c) \
+$(abspath ../../../../components/ble/ble_advertising/ble_advertising.c) \
+$(abspath ../../../../components/ble/common/ble_advdata.c) \
 $(abspath ../../../../components/softdevice/common/softdevice_handler/softdevice_handler.c) \
 
 #assembly files common to all targets
@@ -47,6 +49,7 @@ ASM_SOURCE_FILES  = $(abspath ../../../../components/toolchain/gcc/gcc_startup_n
 
 #includes common to all targets
 INC_PATHS  = -I$(abspath ../../../config)
+INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/pstorage/config)
 INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/config)
 INC_PATHS += -I$(abspath ../../../bsp)
 INC_PATHS += -I$(abspath ../../../../components/libraries/fifo)
