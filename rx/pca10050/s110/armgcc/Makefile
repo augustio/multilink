@@ -39,6 +39,8 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 C_SOURCE_FILES += \
 $(abspath ../../../main.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
+$(abspath ../../../../components/libraries/util/app_error.c) \
+$(abspath ../../../../components/softdevice/common/softdevice_handler/softdevice_handler.c) \
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  = $(abspath ../../../../components/toolchain/gcc/gcc_startup_nrf51.s)
@@ -193,7 +195,7 @@ echosize:
 	-@echo ""
 
 clean:
-	$(RM) $(BUILD_DIRECTORIES)
+	$(RM) $(BUILD_DIRECTORIES) *~
 
 cleanobj:
 	$(RM) $(BUILD_DIRECTORIES)/*.o
