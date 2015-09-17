@@ -198,11 +198,12 @@ clean:
 cleanobj:
 	$(RM) $(BUILD_DIRECTORIES)/*.o
 
-flash: $(MAKECMDGOALS)
-	@echo Flashing: $(OUTPUT_BINARY_DIRECTORY)/$<.hex
-	nrfjprog --reset --program $(OUTPUT_BINARY_DIRECTORY)/$<.hex
-
-## Flash softdevice
-flash_softdevice: 
-	@echo Flashing: s110_softdevice.hex
-	nrfjprog --reset --program ../../../../../../components/softdevice/s110/hex/s110_softdevice.hex
+OUTPUT_FILENAME := nrf51422_xxac_s110
+DB := arm-none-eabi-gdb
+flash:
+	@echo Flashing $(OUTPUT_FILENAME).hex
+	JLinkGDBServer -select USB -device nRF51422_xxAC -if SWD -speed 1000 -noir &
+	sleep 2
+	$(DB) --command=flash.gdb -batch
+	sleep 2
+	pkill JLinkGDBServer
