@@ -20,18 +20,6 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 {
 }
 
-static void advertising_init(void)
-{
-	uint32_t err_code;
-	ble_advdata_t advdata;
-	ble_adv_modes_config_t options = {0};
-
-	memset(&advdata, 0, sizeof(advdata));
-
-	err_code = ble_advertising_init(&advdata, NULL, &options, on_adv_evt, NULL);
-	APP_ERROR_CHECK(err_code);
-}
-
 static void ble_stack_init(void)
 {
 	uint32_t err_code;
@@ -56,6 +44,26 @@ static void ble_stack_init(void)
 static void power_manage(void)
 {
 	uint32_t err_code = sd_app_evt_wait();
+	APP_ERROR_CHECK(err_code);
+}
+
+static void advertising_init(void)
+{
+	uint32_t err_code;
+	ble_advdata_t advdata;
+	ble_adv_modes_config_t options = {0};
+
+	memset(&advdata, 0, sizeof(advdata));
+
+	advdata.name_type               = BLE_ADVDATA_FULL_NAME;
+	advdata.include_appearance      = true;
+	advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+
+	options.ble_adv_fast_enabled  = BLE_ADV_FAST_ENABLED;
+	options.ble_adv_fast_interval = APP_ADV_INTERVAL;
+	options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
+
+	err_code = ble_advertising_init(&advdata, NULL, &options, on_adv_evt, NULL);
 	APP_ERROR_CHECK(err_code);
 }
 
