@@ -25,8 +25,25 @@
 static uint8_t m_base_uuid_type;
 static ble_gatts_char_handles_t  m_char_handles;
 
+static void on_ble_evt(ble_evt_t *p_ble_evt)
+{
+	switch (p_ble_evt->header.evt_id) {
+	case BLE_GAP_EVT_CONNECTED:
+		simple_uart_putstring((const uint8_t*) "Connected\r\n");
+	break;
+
+	case BLE_GAP_EVT_DISCONNECTED:
+		simple_uart_putstring((const uint8_t*) "Disconnected\r\n");
+	break;
+
+	default:
+	break;
+	}
+}
+
 static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
 {
+	on_ble_evt(p_ble_evt);
 }
 
 static void sys_evt_dispatch(uint32_t sys_evt)
