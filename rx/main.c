@@ -224,7 +224,7 @@ int main(void)
 	services_init();
 	advertising_start();
 
-	simple_uart_putstring((const uint8_t *)"Entering main loop\r\n");
+	simple_uart_putstring((const uint8_t *)"RX goes main loop\r\n");
 
 	while (1)
 		power_manage();
