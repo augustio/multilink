@@ -3,6 +3,7 @@
 
 #include "softdevice_handler.h"
 #include "ble_advertising.h"
+#include "simple_uart.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0
 #define APP_ADV_INTERVAL                   MSEC_TO_UNITS(50, UNIT_0_625_MS)
@@ -197,12 +198,16 @@ static void services_init(void)
 
 int main(void)
 {
+	simple_uart_config(6, 10, 5, 4, false);
+
 	ble_stack_init();
 
 	gap_params_init();
 	advertising_init();
 	services_init();
 	advertising_start();
+
+	simple_uart_putstring((const uint8_t *)"Entering main loop\r\n");
 
 	while (1)
 		power_manage();
