@@ -14,8 +14,6 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	const ble_gap_evt_t *p_gap_evt = &p_ble_evt->evt.gap_evt;
 
-	simple_uart_putstring((const uint8_t *)"BLE event came in\r\n");
-
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_ADV_REPORT:
 		simple_uart_putstring((const uint8_t *)"Adv event\r\n");
@@ -41,7 +39,7 @@ static void sys_evt_dispatch(uint32_t sys_evt)
 }
 
 #define CHECK_ERROR_CODE do { \
-	char buf[16]; \
+	char buf[8]; \
 	sprintf(buf, "%d\r\n", __LINE__); \
 	simple_uart_putstring((const uint8_t*)buf); \
 } while (0);
@@ -95,6 +93,12 @@ static void ble_stack_init()
 		CHECK_ERROR_CODE;
 }
 
+static void power_manage(void)
+{
+	uint32_t err_code = sd_app_evt_wait();
+	APP_ERROR_CHECK(err_code);
+}
+
 int main(void)
 {
 	simple_uart_config(12, 11, 12, 12, false);
@@ -105,7 +109,7 @@ int main(void)
 	simple_uart_putstring((const uint8_t *)"TX goes main loop\r\n");
 
 	while (1)
-		continue;
+		power_manage();
 
 	return 0;
 }
