@@ -16,7 +16,19 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_ADV_REPORT:
+	{
+		int i;
+
 		simple_uart_putstring((const uint8_t *)"Adv event\r\n");
+
+		for (i = 0; i < p_ble_evt->evt.gap_evt.params.adv_report.dlen; i++) {
+			char buf[8];
+			sprintf(buf, "%x ", p_ble_evt->evt.gap_evt.params.adv_report.data[i]);
+			simple_uart_putstring((const uint8_t *)buf);
+		}
+
+		simple_uart_putstring((const uint8_t *)"\r\n");
+	}
 	break;
 	case BLE_GAP_EVT_TIMEOUT:
 		if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
@@ -101,7 +113,7 @@ static void power_manage(void)
 
 int main(void)
 {
-	simple_uart_config(12, 11, 12, 12, false);
+	simple_uart_config(11, 12, 11, 11, false);
 
 	ble_stack_init();
 	scan_start();
