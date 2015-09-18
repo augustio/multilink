@@ -110,8 +110,10 @@ int main(void)
 
 	simple_uart_putstring((const uint8_t *)"TX goes main loop\r\n");
 
-	while (1)
+	while (1) {
 		power_manage();
+		simple_uart_putstring((const uint8_t *)"App event came in\r\n");
+	}
 
 	return 0;
 }
