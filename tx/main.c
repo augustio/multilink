@@ -38,6 +38,12 @@ static void sys_evt_dispatch(uint32_t sys_evt)
 {
 }
 
+#define CHECK_ERROR_CODE do { \
+	char buf[16]; \
+	sprintf(buf, "%d\r\n", __LINE__); \
+	simple_uart_putstring((const uint8_t*)buf); \
+} while (0);
+
 static void scan_start()
 {
 	/* For simplicity, we always do nonselective scan */
@@ -53,13 +59,10 @@ static void scan_start()
 
 	err_code = sd_ble_gap_scan_start(&m_scan_param);
 	APP_ERROR_CHECK(err_code);
-}
 
-#define CHECK_ERROR_CODE do { \
-	char buf[16]; \
-	sprintf(buf, "%d\r\n", __LINE__); \
-	simple_uart_putstring((const uint8_t*)buf); \
-} while (0);
+	if (err_code != NRF_SUCCESS)
+		CHECK_ERROR_CODE;
+}
 
 static void ble_stack_init()
 {
@@ -71,8 +74,8 @@ static void ble_stack_init()
 
 	memset(&ble_enable_params, 0, sizeof(ble_enable_params));
 
-	ble_enable_params.gatts_enable_params.attr_tab_size   = BLE_GATTS_ATTR_TAB_SIZE_DEFAULT;
 	ble_enable_params.gatts_enable_params.service_changed = false;
+	ble_enable_params.gap_enable_params.role              = BLE_GAP_ROLE_CENTRAL;
 
 	err_code = sd_ble_enable(&ble_enable_params);
 	APP_ERROR_CHECK(err_code);

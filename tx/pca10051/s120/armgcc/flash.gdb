@@ -13,7 +13,7 @@ set {int} 0x4001e514 = 0x01
 set {int} 0x4001e504 = 0x01
 
 # Flash the softdevice
-load  ../../../../components/softdevice/s130/hex/s130_softdevice.hex
+load  ../../../../components/softdevice/s120/hex/s120_softdevice.hex
 
 # Flash the software
-load _build/nrf51422_xxac_s130.hex
+load _build/nrf51422_xxac_s120.hex
