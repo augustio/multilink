@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "simple_uart.h"
 #include "softdevice_handler.h"
@@ -54,6 +55,12 @@ static void scan_start()
 	APP_ERROR_CHECK(err_code);
 }
 
+#define CHECK_ERROR_CODE do { \
+	char buf[16]; \
+	sprintf(buf, "%d\r\n", __LINE__); \
+	simple_uart_putstring((const uint8_t*)buf); \
+} while (0);
+
 static void ble_stack_init()
 {
 	uint32_t err_code;
@@ -69,12 +76,18 @@ static void ble_stack_init()
 
 	err_code = sd_ble_enable(&ble_enable_params);
 	APP_ERROR_CHECK(err_code);
+	if (err_code != NRF_SUCCESS)
+		CHECK_ERROR_CODE;
 
 	err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
 	APP_ERROR_CHECK(err_code);
+	if (err_code != NRF_SUCCESS)
+		CHECK_ERROR_CODE;
 
 	err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
 	APP_ERROR_CHECK(err_code);
+	if (err_code != NRF_SUCCESS)
+		CHECK_ERROR_CODE;
 }
 
 int main(void)
