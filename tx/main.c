@@ -14,6 +14,8 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	const ble_gap_evt_t *p_gap_evt = &p_ble_evt->evt.gap_evt;
 
+	simple_uart_putstring((const uint8_t *)"BLE event came in\r\n");
+
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_ADV_REPORT:
 		simple_uart_putstring((const uint8_t *)"Adv event\r\n");
