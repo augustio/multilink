@@ -4,8 +4,7 @@
 
 #include "simple_uart.h"
 #include "softdevice_handler.h"
-#include "spi_master.h"
-#include "app_util_platform.h"
+#include "sw_spi.h"
 
 #define SCAN_INTERVAL 0x00A0  /**< Determines scan interval in units of 0.625 millisecond. */
 #define SCAN_WINDOW   0x0050  /**< Determines scan window in units of 0.625 millisecond. */
@@ -118,9 +117,21 @@ int main(void)
 	simple_uart_config(11, 12, 11, 11, false);
 
 	ble_stack_init();
-	scan_start();
+	spi_sw_master_init();
 
-	simple_uart_putstring((const uint8_t *)"TX goes main loop\r\n");
+	{
+		uint16_t txb = 0x0F00 | 0x8000;
+		uint8_t rxb[2] = {0};
+		char buf[8];
+
+		spi_sw_master_send_bytes(&txb, rxb, 1);
+
+		sprintf(buf, "%x %x ", rxb[0], rxb[1]);
+		simple_uart_putstring((const uint8_t *)buf);
+	}
+	//scan_start();
+
+	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
 	while (1) {
 		power_manage();
