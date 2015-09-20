@@ -41,7 +41,6 @@ $(abspath ../../../../components/libraries/util/app_error.c) \
 $(abspath ../../../main.c) \
 $(abspath ../../../simple_uart.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
-$(abspath ../../../../components/drivers_nrf/spi_master/spi_master.c) \
 $(abspath ../../../../components/softdevice/common/softdevice_handler/softdevice_handler.c) \
 
 #assembly files common to all targets
@@ -82,7 +81,6 @@ BUILD_DIRECTORIES := $(sort $(OBJECT_DIRECTORY) $(OUTPUT_BINARY_DIRECTORY) $(LIS
 
 #flags common to all targets
 CFLAGS  = -DSWI_DISABLE0
-CFLAGS  = -DSPI_MASTER_0_ENABLE
 CFLAGS += -DBOARD_PCA10028
 CFLAGS += -DSOFTDEVICE_PRESENT
 CFLAGS += -DNRF51
