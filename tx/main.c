@@ -142,6 +142,15 @@ static void spi_register_conf(void)
 	spi_sw_master_send_bytes(tx, rx, buf_len);
 }
 
+static void gpio_init(void)
+{
+	nrf_gpio_cfg_sense_input(9, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_LOW);
+	NRF_GPIOTE->INTENSET = GPIOTE_INTENSET_PORT_Msk;
+	NVIC_EnableIRQ(GPIOTE_IRQn);
+
+	sd_nvic_SetPriority(GPIOTE_IRQn, NRF_APP_PRIORITY_LOW);
+}
+
 int main(void)
 {
 	simple_uart_config(11, 12, 11, 11, false);
@@ -150,13 +159,7 @@ int main(void)
 
 	spi_sw_master_init();
 	spi_register_conf();
-	nrf_gpio_cfg_output(9);
-
-	while (1) {
-		char buf[8];
-		sprintf(buf, "%x\r\n", (unsigned int)nrf_gpio_pin_read(9));
-		simple_uart_putstring((const uint8_t *)buf);
-	}
+	gpio_init();
 
 	//scan_start();
 
@@ -167,4 +170,13 @@ int main(void)
 	}
 
 	return 0;
+}
+
+void GPIOTE_IRQHandler(void)
+{
+	if(NRF_GPIOTE->EVENTS_PORT)
+	{
+		NRF_GPIOTE->EVENTS_PORT = 0;
+		simple_uart_putstring((const uint8_t *)"IRQ handler\r\n");
+	}
 }
