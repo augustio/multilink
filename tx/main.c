@@ -112,23 +112,52 @@ static void power_manage(void)
 	APP_ERROR_CHECK(err_code);
 }
 
+static void spi_register_conf(void)
+{
+	uint16_t buf_len = 12;
+	uint8_t rx_buffer[buf_len];
+	uint16_t tx_buffer[buf_len];
+	uint16_t *tx = tx_buffer;
+	uint8_t *rx = rx_buffer;
+
+	int index;
+	for (index = 0; index < buf_len; index++) {
+		tx_buffer[index] = 0;
+		rx_buffer[index] = 0;
+	}
+
+	tx_buffer[0] = 0x1000 | 0x48; // CTRL1_XL: Set 104 Hz, 4 g full scale.
+	tx_buffer[1] = 0x1500 | 0x10; // CTRL6_C: Disable high-performance mode for acceleration.
+	tx_buffer[2] = 0x1600 | 0x80; // CTRL7_G: Disable high-performance mode for gyro.
+	tx_buffer[3] = 0x1900 | 0x10; // CTRL10_C: Disable x (roll) and z (pitch) axes for gyro. 00zyx000
+	tx_buffer[4] = 0x5800 | 0x06; // TAP_CFG: Enable tap interrupt in yz directions(011). No latch(0).
+	tx_buffer[5] = 0x5900 | 0x08; // TAP_THS_6D: Tap threshold full scale/32 * 8 = 1g.
+	tx_buffer[6] = 0x5A00 | 0x3C; // INT_DUR2: Dur(0011)=960ms,Quiet(11)=120ms,Shock(00)=40ms.
+	tx_buffer[7] = 0x5B00 | 0xC4; // WAKE_UP_THS: Enable double tap and activity/inactivity (THS=0.25g). Double tap only: 80.
+	tx_buffer[8] = 0x5C00 | 0x41; // WAKE_UP_DUR: Wake with 2 points above THS. Sleep in 5 s.
+	tx_buffer[9] = 0x5E00 | 0x08; // MD1_CFG: Route double tap to INT1.
+	tx_buffer[10] = 0x5F00 | 0x00; // MD2_CFG: Disable INT 2.
+	tx_buffer[11] = 0x0000;
+
+	spi_sw_master_send_bytes(tx, rx, buf_len);
+}
+
 int main(void)
 {
 	simple_uart_config(11, 12, 11, 11, false);
 
 	ble_stack_init();
+
 	spi_sw_master_init();
+	spi_register_conf();
+	nrf_gpio_cfg_output(9);
 
-	{
-		uint16_t txb = 0x0F00 | 0x8000;
-		uint8_t rxb[2] = {0};
+	while (1) {
 		char buf[8];
-
-		spi_sw_master_send_bytes(&txb, rxb, 1);
-
-		sprintf(buf, "%x %x ", rxb[0], rxb[1]);
+		sprintf(buf, "%x\r\n", (unsigned int)nrf_gpio_pin_read(9));
 		simple_uart_putstring((const uint8_t *)buf);
 	}
+
 	//scan_start();
 
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
