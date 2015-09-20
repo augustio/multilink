@@ -41,6 +41,7 @@ $(abspath ../../../../components/libraries/util/app_error.c) \
 $(abspath ../../../main.c) \
 $(abspath ../../../simple_uart.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
+$(abspath ../../../../components/drivers_nrf/spi_master/spi_master.c) \
 $(abspath ../../../../components/softdevice/common/softdevice_handler/softdevice_handler.c) \
 
 #assembly files common to all targets
@@ -57,6 +58,7 @@ INC_PATHS += -I$(abspath ../../../../components/softdevice/s120/headers)
 INC_PATHS += -I$(abspath ../../../../components/libraries/util)
 INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/pstorage)
 INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/uart)
+INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/spi_master)
 INC_PATHS += -I$(abspath ../../../../../../components/ble/common)
 INC_PATHS += -I$(abspath ../../../../components/ble/device_manager)
 INC_PATHS += -I$(abspath ../../../../components/device)

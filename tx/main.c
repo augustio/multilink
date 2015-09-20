@@ -2,8 +2,12 @@
 #include <string.h>
 #include <stdio.h>
 
+#define SPI_MASTER_0_ENABLE
+
 #include "simple_uart.h"
 #include "softdevice_handler.h"
+#include "spi_master.h"
+#include "app_util_platform.h"
 
 #define SCAN_INTERVAL 0x00A0  /**< Determines scan interval in units of 0.625 millisecond. */
 #define SCAN_WINDOW   0x0050  /**< Determines scan window in units of 0.625 millisecond. */
@@ -111,11 +115,85 @@ static void power_manage(void)
 	APP_ERROR_CHECK(err_code);
 }
 
+void spi_master_event_handler(spi_master_evt_t spi_master_evt)
+{
+	switch (spi_master_evt.evt_type)
+	{
+	case SPI_MASTER_EVT_TRANSFER_COMPLETED:
+		//Data transmission is ended successful. 'rx_buffer' has data received from SPI slave.
+
+		//                        transmission_completed = true;
+		simple_uart_putstring((const uint8_t *)"SPI transfer completed\r\n");
+	break;
+
+	default:
+		//No implementation needed.
+	break;
+	}
+}
+
+#define SPIM0_SCK_PIN       3     /**< SPI clock GPIO pin number. */
+#define SPIM0_MOSI_PIN      2     /**< SPI Master Out Slave In GPIO pin number. */
+#define SPIM0_MISO_PIN      30     /**< SPI Master In Slave Out GPIO pin number. */
+#define SPIM0_SS_PIN        4     /**< SPI Slave Select GPIO pin number. */
+
+void spi_master_init(void)
+{
+	//Structure for SPI master configuration, initialized by default values.
+	spi_master_config_t spi_config = SPI_MASTER_INIT_DEFAULT;
+
+	//Configure SPI master.
+	spi_config.SPI_CONFIG_CPOL = SPI_CONFIG_CPOL_ActiveLow;
+	spi_config.SPI_CONFIG_CPHA = SPI_CONFIG_CPHA_Trailing;
+	spi_config.SPI_CONFIG_ORDER = SPI_CONFIG_ORDER_MsbFirst;
+	spi_config.SPI_Pin_SCK  = SPIM0_SCK_PIN;
+	spi_config.SPI_Pin_MISO = SPIM0_MISO_PIN;
+	spi_config.SPI_Pin_MOSI = SPIM0_MOSI_PIN;
+	spi_config.SPI_Pin_SS   = SPIM0_SS_PIN;
+
+	//Initialize SPI master.
+	uint32_t err_code = spi_master_open(SPI_MASTER_0, &spi_config);
+	if (err_code != NRF_SUCCESS)
+	{
+		// Module initialization failed. Take recovery action.
+		simple_uart_putstring((const uint8_t *)"SPI init failed\r\n");
+	}
+
+	//Register SPI master event handler.
+	spi_master_evt_handler_reg(SPI_MASTER_0, spi_master_event_handler);
+}
+
+#define TX_RX_MSG_LENGTH 2
+
 int main(void)
 {
 	simple_uart_config(11, 12, 11, 11, false);
 
 	ble_stack_init();
+	spi_master_init();
+
+	{
+		uint16_t        buf_len = TX_RX_MSG_LENGTH;
+		uint8_t         rx_buffer[TX_RX_MSG_LENGTH] = {0};
+		uint8_t         tx_buffer[TX_RX_MSG_LENGTH] = {0x0F, 0x00};   
+
+		char buf[8];
+		int idx;
+
+		uint32_t err_code = spi_master_send_recv(SPI_MASTER_0, tx_buffer, buf_len, rx_buffer, buf_len);
+		if (err_code != NRF_SUCCESS)
+		{
+			//Data transmission failed.
+			simple_uart_putstring((const uint8_t *)"SPI comm failed\r\n");
+		}
+
+		for (idx = 0; idx < TX_RX_MSG_LENGTH; idx++) {
+			sprintf(buf, "%d ", rx_buffer[idx]);
+			simple_uart_putstring((const uint8_t *)buf);
+		}
+		simple_uart_putstring((const uint8_t *)"\r\n");
+	}
+
 	scan_start();
 
 	simple_uart_putstring((const uint8_t *)"TX goes main loop\r\n");
