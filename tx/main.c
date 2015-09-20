@@ -144,6 +144,7 @@ void spi_master_init(void)
 	spi_config.SPI_CONFIG_CPOL = SPI_CONFIG_CPOL_ActiveLow;
 	spi_config.SPI_CONFIG_CPHA = SPI_CONFIG_CPHA_Trailing;
 	spi_config.SPI_CONFIG_ORDER = SPI_CONFIG_ORDER_MsbFirst;
+	spi_config.SPI_Freq = SPI_FREQUENCY_FREQUENCY_K125;
 	spi_config.SPI_Pin_SCK  = SPIM0_SCK_PIN;
 	spi_config.SPI_Pin_MISO = SPIM0_MISO_PIN;
 	spi_config.SPI_Pin_MOSI = SPIM0_MOSI_PIN;
@@ -192,7 +193,7 @@ int main(void)
 		simple_uart_putstring((const uint8_t *)"\r\n");
 	}
 
-	scan_start();
+	//scan_start();
 
 	simple_uart_putstring((const uint8_t *)"TX goes main loop\r\n");
 
