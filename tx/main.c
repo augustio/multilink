@@ -2,8 +2,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#define SPI_MASTER_0_ENABLE
-
 #include "simple_uart.h"
 #include "softdevice_handler.h"
 #include "spi_master.h"
