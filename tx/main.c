@@ -9,6 +9,8 @@
 #define SCAN_INTERVAL 0x00A0  /**< Determines scan interval in units of 0.625 millisecond. */
 #define SCAN_WINDOW   0x0050  /**< Determines scan window in units of 0.625 millisecond. */
 
+#define TARGET_DEVICE_NAME "Electria_receiver"
+
 static ble_gap_scan_params_t m_scan_param; /**< Scan parameters requested for scanning and connection. */
 
 static bool start_scan = false;
@@ -43,6 +45,11 @@ static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_type
 	return NRF_ERROR_NOT_FOUND;
 }
 
+static bool is_our_target_device(data_t *type_data)
+{
+	return !memcmp(type_data->p_data, TARGET_DEVICE_NAME, type_data->data_len - 1);
+}
+
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	const ble_gap_evt_t *p_gap_evt = &p_ble_evt->evt.gap_evt;
@@ -68,6 +75,11 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 		adv_data.p_data = (uint8_t *)p_ble_evt->evt.gap_evt.params.adv_report.data;
 		adv_data.data_len = p_gap_evt->params.adv_report.dlen;
 
+		/* If we want to detect our target device using something else than the local name,
+		 * change the first argument to that type of data that you are looking for, and
+		 * _simultaneously_ change the is_our_device() function above. For example, we
+		 * might want to look for a specific room number and such. -DV
+		 */
 		err_code = adv_report_parse(BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME, &adv_data, &type_data);
 
 		if (err_code == NRF_SUCCESS) {
@@ -76,6 +88,10 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 			simple_uart_putstring((const uint8_t *)"Found good data, which is \r\n");
 			sprintf(buf, "\t%s\r\n", type_data.p_data);
 			simple_uart_putstring((const uint8_t *)buf);
+
+			if (is_our_target_device(&type_data)) {
+				simple_uart_putstring((const uint8_t *)"This is our guy, get connected\r\n");
+			}
 		}
 
 	}
