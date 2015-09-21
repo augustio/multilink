@@ -50,6 +50,9 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_ADV_REPORT:
 	{
+		uint32_t err_code;
+		data_t adv_data;
+		data_t type_data;
 		int i;
 
 		simple_uart_putstring((const uint8_t *)"Adv event\r\n");
@@ -61,6 +64,20 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 		}
 
 		simple_uart_putstring((const uint8_t *)"\r\n");
+		
+		adv_data.p_data = (uint8_t *)p_ble_evt->evt.gap_evt.params.adv_report.data;
+		adv_data.data_len = p_gap_evt->params.adv_report.dlen;
+
+		err_code = adv_report_parse(BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME, &adv_data, &type_data);
+
+		if (err_code == NRF_SUCCESS) {
+			char buf[32];
+
+			simple_uart_putstring((const uint8_t *)"Found good data, which is \r\n");
+			sprintf(buf, "\t%s\r\n", type_data.p_data);
+			simple_uart_putstring((const uint8_t *)buf);
+		}
+
 	}
 	break;
 	case BLE_GAP_EVT_TIMEOUT:
