@@ -162,6 +162,11 @@ static void scheduler_init()
 	APP_SCHED_INIT(SCHED_MAX_EVENT_DATA_SIZE, SCHED_QUEUE_SIZE);
 }
 
+static void spi_event_get(void *p_event_data, uint16_t event_size)
+{
+	simple_uart_putstring((const uint8_t *)"IRQ handler\r\n");
+}
+
 int main(void)
 {
 	simple_uart_config(11, 12, 11, 11, false);
@@ -174,7 +179,7 @@ int main(void)
 	spi_register_conf();
 	gpio_init();
 
-	scan_start();
+	//scan_start();
 
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
@@ -191,6 +196,6 @@ void GPIOTE_IRQHandler(void)
 	if(NRF_GPIOTE->EVENTS_PORT)
 	{
 		NRF_GPIOTE->EVENTS_PORT = 0;
-		simple_uart_putstring((const uint8_t *)"IRQ handler\r\n");
+		app_sched_event_put(NULL, 0, spi_event_get);
 	}
 }
