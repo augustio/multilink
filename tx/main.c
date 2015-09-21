@@ -9,12 +9,24 @@
 #define SCAN_INTERVAL 0x00A0  /**< Determines scan interval in units of 0.625 millisecond. */
 #define SCAN_WINDOW   0x0050  /**< Determines scan window in units of 0.625 millisecond. */
 
+#define MIN_CONNECTION_INTERVAL    MSEC_TO_UNITS(7.5, UNIT_1_25_MS)
+#define MAX_CONNECTION_INTERVAL    MSEC_TO_UNITS(30, UNIT_1_25_MS)
+#define SUPERVISION_TIMEOUT        MSEC_TO_UNITS(4000, UNIT_10_MS)
+
 #define TARGET_DEVICE_NAME "Electria_receiver"
 
 static ble_gap_scan_params_t m_scan_param; /**< Scan parameters requested for scanning and connection. */
+static const ble_gap_conn_params_t m_connection_param =
+{
+	(uint16_t)MIN_CONNECTION_INTERVAL,   // Minimum connection
+	(uint16_t)MAX_CONNECTION_INTERVAL,   // Maximum connection
+	0,                                   // Slave latency
+	(uint16_t)SUPERVISION_TIMEOUT        // Supervision time-out
+};
 
 static bool start_scan = false;
 static bool scanning = false;
+static bool in_connection = false;
 
 typedef struct
 {
@@ -96,6 +108,20 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 					simple_uart_putstring((const uint8_t *)"Failed to properly sto scanning\r\n");
 				} else {
 					scanning = false;
+					in_connection = true;
+
+					err_code = sd_ble_gap_connect(&p_gap_evt->params.adv_report.peer_addr,
+									&m_scan_param,
+									&m_connection_param);
+
+					if (err_code != NRF_SUCCESS) {
+						simple_uart_putstring((const uint8_t *)"Connection failed. Reason: ");
+						sprintf(buf, "0x%x\r\n", (unsigned int)err_code);
+						simple_uart_putstring((const uint8_t *)buf);
+					} else {
+						simple_uart_putstring((const uint8_t *)"Connected. Please check the RX console now.\r\n");
+					}
+
 				}
 			}
 		}
@@ -251,6 +277,10 @@ void GPIOTE_IRQHandler(void)
 	{
 		NRF_GPIOTE->EVENTS_PORT = 0;
 		simple_uart_putstring((const uint8_t *)"IRQ handler\r\n");
+
+		if (in_connection)
+			return;
+
 		if (!scanning)
 			start_scan = true;
 	}
