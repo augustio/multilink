@@ -11,6 +11,9 @@
 
 static ble_gap_scan_params_t m_scan_param; /**< Scan parameters requested for scanning and connection. */
 
+static bool start_scan = false;
+static bool scanning = false;
+
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	const ble_gap_evt_t *p_gap_evt = &p_ble_evt->evt.gap_evt;
@@ -159,11 +162,15 @@ int main(void)
 	spi_register_conf();
 	gpio_init();
 
-	//scan_start();
-
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
 	while (1) {
+		if (start_scan && !scanning) {
+			scanning = true;
+			start_scan = false;
+			simple_uart_putstring((const uint8_t *)"\r\ngoes scanning\r\n");
+			scan_start();
+		}
 		power_manage();
 	}
 
@@ -172,9 +179,11 @@ int main(void)
 
 void GPIOTE_IRQHandler(void)
 {
-	if(NRF_GPIOTE->EVENTS_PORT)
+	if (NRF_GPIOTE->EVENTS_PORT)
 	{
 		NRF_GPIOTE->EVENTS_PORT = 0;
 		simple_uart_putstring((const uint8_t *)"IRQ handler\r\n");
+		if (!scanning)
+			start_scan = true;
 	}
 }
