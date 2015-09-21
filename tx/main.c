@@ -14,6 +14,35 @@ static ble_gap_scan_params_t m_scan_param; /**< Scan parameters requested for sc
 static bool start_scan = false;
 static bool scanning = false;
 
+typedef struct
+{
+	uint8_t  *p_data;
+	uint16_t data_len;
+} data_t;
+
+static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
+{
+	uint32_t  index = 0;
+	uint8_t * p_data;
+
+	p_data = p_advdata->p_data;
+
+	while (index < p_advdata->data_len)
+	{
+		uint8_t field_length = p_data[index];
+		uint8_t field_type   = p_data[index+1];
+
+		if (field_type == type)
+		{
+			p_typedata->p_data   = &p_data[index+2];
+			p_typedata->data_len = field_length-1;
+			return NRF_SUCCESS;
+		}
+		index += field_length + 1;
+	}
+	return NRF_ERROR_NOT_FOUND;
+}
+
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	const ble_gap_evt_t *p_gap_evt = &p_ble_evt->evt.gap_evt;
