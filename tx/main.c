@@ -2,12 +2,18 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "app_timer_appsh.h"
+#include "app_scheduler.h"
+
 #include "simple_uart.h"
-#include "softdevice_handler.h"
+#include "softdevice_handler_appsh.h"
 #include "sw_spi.h"
 
 #define SCAN_INTERVAL 0x00A0  /**< Determines scan interval in units of 0.625 millisecond. */
 #define SCAN_WINDOW   0x0050  /**< Determines scan window in units of 0.625 millisecond. */
+
+#define SCHED_MAX_EVENT_DATA_SIZE MAX(APP_TIMER_SCHED_EVT_SIZE, BLE_STACK_HANDLER_SCHED_EVT_SIZE)
+#define SCHED_QUEUE_SIZE 10 
 
 static ble_gap_scan_params_t m_scan_param; /**< Scan parameters requested for scanning and connection. */
 
@@ -81,7 +87,7 @@ static void ble_stack_init()
 {
 	uint32_t err_code;
 
-	SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
+	SOFTDEVICE_HANDLER_APPSH_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, true);
 
 	ble_enable_params_t ble_enable_params;
 
@@ -151,21 +157,29 @@ static void gpio_init(void)
 	sd_nvic_SetPriority(GPIOTE_IRQn, NRF_APP_PRIORITY_LOW);
 }
 
+static void scheduler_init()
+{
+	APP_SCHED_INIT(SCHED_MAX_EVENT_DATA_SIZE, SCHED_QUEUE_SIZE);
+}
+
 int main(void)
 {
 	simple_uart_config(11, 12, 11, 11, false);
 
 	ble_stack_init();
 
+	scheduler_init();
+
 	spi_sw_master_init();
 	spi_register_conf();
 	gpio_init();
 
-	//scan_start();
+	scan_start();
 
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
 	while (1) {
+		app_sched_execute();
 		power_manage();
 	}
 
