@@ -144,11 +144,9 @@ static void spi_register_conf(void)
 
 static void gpio_init(void)
 {
-	nrf_gpio_cfg_sense_input(9, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_LOW);
+	nrf_gpio_cfg_sense_input(9, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_HIGH);
 	NRF_GPIOTE->INTENSET = GPIOTE_INTENSET_PORT_Msk;
 	NVIC_EnableIRQ(GPIOTE_IRQn);
-
-	sd_nvic_SetPriority(GPIOTE_IRQn, NRF_APP_PRIORITY_LOW);
 }
 
 int main(void)
