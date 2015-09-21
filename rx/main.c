@@ -4,6 +4,7 @@
 #include "softdevice_handler.h"
 #include "ble_advertising.h"
 #include "simple_uart.h"
+#include "nrf_gpio.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0
 #define APP_ADV_INTERVAL                   MSEC_TO_UNITS(50, UNIT_0_625_MS)
@@ -22,6 +23,8 @@
 #define MULTILINK_PERIPHERAL_SERVICE_UUID  0x9001
 #define MULTILINK_PERIPHERAL_CHAR_UUID     0x900A
 
+#define RX_GREEN_LED_PIN (8)
+
 static uint8_t m_base_uuid_type;
 static ble_gatts_char_handles_t  m_char_handles;
 
@@ -30,10 +33,12 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_CONNECTED:
 		simple_uart_putstring((const uint8_t*) "Connected\r\n");
+		nrf_gpio_pin_set(RX_GREEN_LED_PIN);
 	break;
 
 	case BLE_GAP_EVT_DISCONNECTED:
 		simple_uart_putstring((const uint8_t*) "Disconnected\r\n");
+		nrf_gpio_pin_clear(RX_GREEN_LED_PIN);
 	break;
 
 	default:
@@ -216,6 +221,7 @@ static void services_init(void)
 int main(void)
 {
 	simple_uart_config(6, 10, 5, 4, false);
+	nrf_gpio_cfg_output(RX_GREEN_LED_PIN);
 
 	ble_stack_init();
 
