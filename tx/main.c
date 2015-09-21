@@ -91,6 +91,12 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 
 			if (is_our_target_device(&type_data)) {
 				simple_uart_putstring((const uint8_t *)"This is our guy, get connected\r\n");
+				err_code = sd_ble_gap_scan_stop();
+				if (err_code != NRF_SUCCESS) {
+					simple_uart_putstring((const uint8_t *)"Failed to properly sto scanning\r\n");
+				} else {
+					scanning = false;
+				}
 			}
 		}
 
