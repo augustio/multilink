@@ -264,7 +264,26 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 						const dm_event_t *p_event,
 						const ret_code_t  event_result)
 {
-	simple_uart_putstring((const uint8_t *)"\r\nDevice manager handler called\r\n");
+	simple_uart_putstring((const uint8_t *)"Device manager handler called\r\n");
+
+	switch (p_event->event_id) {
+	char buf[32];
+	case DM_EVT_CONNECTION:
+	{
+		ble_gap_addr_t *peer_addr = &p_event->event_param.p_gap_param->params.connected.peer_addr;
+
+		sprintf(buf, "%02X %02X %02X %02X %02X %02X\r\n",
+			peer_addr->addr[0], peer_addr->addr[1], peer_addr->addr[2],
+			peer_addr->addr[3], peer_addr->addr[4], peer_addr->addr[5]);
+
+		simple_uart_putstring((const uint8_t *)"Connected to ");
+		simple_uart_putstring((const uint8_t *)buf);
+		
+	}
+	break;
+	default:
+	break;
+	}
 }
 
 static void device_manager_init(bool erase_bonds)
