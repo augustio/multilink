@@ -5,6 +5,8 @@
 #include "simple_uart.h"
 #include "softdevice_handler.h"
 #include "sw_spi.h"
+#include "device_manager.h"
+#include "pstorage.h"
 
 #define SCAN_INTERVAL 0x00A0  /**< Determines scan interval in units of 0.625 millisecond. */
 #define SCAN_WINDOW   0x0050  /**< Determines scan window in units of 0.625 millisecond. */
@@ -13,9 +15,18 @@
 #define MAX_CONNECTION_INTERVAL    MSEC_TO_UNITS(30, UNIT_1_25_MS)
 #define SUPERVISION_TIMEOUT        MSEC_TO_UNITS(4000, UNIT_10_MS)
 
+#define SEC_PARAM_BOND             0                                  /**< Perform bonding. */
+#define SEC_PARAM_MITM             0                                  /**< Man In The Middle protection not required. */
+#define SEC_PARAM_IO_CAPABILITIES  BLE_GAP_IO_CAPS_NONE               /**< No I/O capabilities. */
+#define SEC_PARAM_OOB              0                                  /**< Out Of Band data not available. */
+#define SEC_PARAM_MIN_KEY_SIZE     7                                  /**< Minimum encryption key size. */
+#define SEC_PARAM_MAX_KEY_SIZE     16                                 /**< Maximum encryption key size. */
+
 #define TARGET_DEVICE_NAME "Electria_receiver"
 
 static ble_gap_scan_params_t m_scan_param; /**< Scan parameters requested for scanning and connection. */
+
+static dm_application_instance_t    m_dm_app_id;
 static const ble_gap_conn_params_t m_connection_param =
 {
 	(uint16_t)MIN_CONNECTION_INTERVAL,   // Minimum connection
@@ -131,9 +142,11 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	case BLE_GAP_EVT_TIMEOUT:
 		if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
 			simple_uart_putstring((const uint8_t *)"Scan timeout\r\n");
+			scanning = false;
 		}
 		else if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
 			simple_uart_putstring((const uint8_t *)"Conn request timeout\r\n");
+			in_connection = false;
 		}
 	break;
 	}
@@ -141,6 +154,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 
 static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
 {
+	dm_ble_evt_handler(p_ble_evt);
 	on_ble_evt(p_ble_evt);
 }
 
@@ -246,11 +260,54 @@ static void gpio_init(void)
 	NVIC_EnableIRQ(GPIOTE_IRQn);
 }
 
+static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
+						const dm_event_t *p_event,
+						const ret_code_t  event_result)
+{
+	simple_uart_putstring((const uint8_t *)"\r\nDevice manager handler called\r\n");
+}
+
+static void device_manager_init(bool erase_bonds)
+{
+	uint32_t err_code;
+	dm_init_param_t init_param = {.clear_persistent_data = erase_bonds};
+	dm_application_param_t register_param;
+
+	err_code = pstorage_init();
+	APP_ERROR_CHECK(err_code);
+
+	err_code = dm_init(&init_param);
+	APP_ERROR_CHECK(err_code);
+
+	memset(&register_param.sec_param, 0, sizeof (ble_gap_sec_params_t));
+
+	// Event handler to be registered with the module.
+	register_param.evt_handler            = device_manager_event_handler;
+
+	// Service or protocol context for device manager to load, store and apply on behalf of application.
+	// Here set to client as application is a GATT client.
+	register_param.service_type           = DM_PROTOCOL_CNTXT_GATT_CLI_ID;
+
+	// Secuirty parameters to be used for security procedures.
+	register_param.sec_param.bond         = SEC_PARAM_BOND;
+	register_param.sec_param.mitm         = SEC_PARAM_MITM;
+	register_param.sec_param.io_caps      = SEC_PARAM_IO_CAPABILITIES;
+	register_param.sec_param.oob          = SEC_PARAM_OOB;
+	register_param.sec_param.min_key_size = SEC_PARAM_MIN_KEY_SIZE;
+	register_param.sec_param.max_key_size = SEC_PARAM_MAX_KEY_SIZE;
+	register_param.sec_param.kdist_periph.enc = 1;
+	register_param.sec_param.kdist_periph.id  = 1;
+
+	err_code = dm_register(&m_dm_app_id, &register_param);
+	APP_ERROR_CHECK(err_code);
+}
+
 int main(void)
 {
 	simple_uart_config(11, 12, 11, 11, false);
 
 	ble_stack_init();
+	device_manager_init(true);
 
 	spi_sw_master_init();
 	spi_register_conf();

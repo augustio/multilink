@@ -38,17 +38,20 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 #source common to all targets
 C_SOURCE_FILES += \
 $(abspath ../../../../components/libraries/util/app_error.c) \
+$(abspath ../../../../components/drivers_nrf/pstorage/pstorage.c) \
 $(abspath ../../../main.c) \
 $(abspath ../../../sw_spi.c) \
 $(abspath ../../../simple_uart.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
 $(abspath ../../../../components/softdevice/common/softdevice_handler/softdevice_handler.c) \
+$(abspath ../../../../components/ble/device_manager/device_manager_central.c) \
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  = $(abspath ../../../../components/toolchain/gcc/gcc_startup_nrf51.s)
 
 #includes common to all targets
-INC_PATHS  = -I$(abspath ../config)
+INC_PATHS  = -I$(abspath ../../../config)
+INC_PATHS += -I$(abspath ../../../../components/ble/device_manager/config)
 INC_PATHS += -I$(abspath ../../../../components/ble/ble_services/ble_hrs_c)
 INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/config)
 INC_PATHS += -I$(abspath ../../../bsp)
@@ -59,7 +62,7 @@ INC_PATHS += -I$(abspath ../../../../components/libraries/util)
 INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/pstorage)
 INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/uart)
 INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/spi_master)
-INC_PATHS += -I$(abspath ../../../../../../components/ble/common)
+INC_PATHS += -I$(abspath ../../../../components/ble/common)
 INC_PATHS += -I$(abspath ../../../../components/ble/device_manager)
 INC_PATHS += -I$(abspath ../../../../components/device)
 INC_PATHS += -I$(abspath ../../../../components/ble/ble_db_discovery)
