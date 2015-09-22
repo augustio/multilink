@@ -264,8 +264,6 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 						const dm_event_t *p_event,
 						const ret_code_t  event_result)
 {
-	simple_uart_putstring((const uint8_t *)"Device manager handler called\r\n");
-
 	switch (p_event->event_id) {
 	char buf[32];
 	case DM_EVT_CONNECTION:
@@ -281,7 +279,37 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		
 	}
 	break;
+
+	case DM_EVT_DISCONNECTION:
+		simple_uart_putstring((const uint8_t *)"DM_EVENT_DISCONNECTION\r\n");
+	break;
+
+	case DM_EVT_SECURITY_SETUP:
+		simple_uart_putstring((const uint8_t *)"DM_EVT_SECURITY_SETUP\r\n");
+	break;
+
+	case DM_EVT_SECURITY_SETUP_COMPLETE:
+		simple_uart_putstring((const uint8_t *)"DM_EVT_SECURITY_SETUP_COMPLETE\r\n");
+	break;
+
+	case DM_EVT_LINK_SECURED:
+		simple_uart_putstring((const uint8_t *)"DM_EVT_LINK_SECURED\r\n");
+	break;
+
+	case DM_EVT_DEVICE_CONTEXT_LOADED:
+		simple_uart_putstring((const uint8_t *)"DM_EVT_DEVICE_CONTEXT_LOADED\r\n");
+	break;
+
+	case DM_EVT_DEVICE_CONTEXT_STORED:
+		simple_uart_putstring((const uint8_t *)"DM_EVT_DEVICE_CONTEXT_STORED\r\n");
+	break;
+
+	case DM_EVT_DEVICE_CONTEXT_DELETED:
+		simple_uart_putstring((const uint8_t *)"DM_EVT_DEVICE_CONTEXT_DELETED\r\n");
+	break;
+
 	default:
+		simple_uart_putstring((const uint8_t *)"UNKNOWN EVENT\r\n");
 	break;
 	}
 }
