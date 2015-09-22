@@ -41,6 +41,7 @@ $(abspath ../../../main.c) \
 $(abspath ../../../simple_uart.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
 $(abspath ../../../../components/libraries/util/app_error.c) \
+$(abspath ../../../../components/libraries/timer/app_timer.c) \
 $(abspath ../../../../components/ble/ble_advertising/ble_advertising.c) \
 $(abspath ../../../../components/ble/common/ble_advdata.c) \
 $(abspath ../../../../components/softdevice/common/softdevice_handler/softdevice_handler.c) \

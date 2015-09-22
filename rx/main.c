@@ -5,6 +5,7 @@
 #include "ble_advertising.h"
 #include "simple_uart.h"
 #include "nrf_gpio.h"
+#include "app_timer.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0
 #define APP_ADV_INTERVAL                   MSEC_TO_UNITS(50, UNIT_0_625_MS)
@@ -25,20 +26,56 @@
 
 #define RX_GREEN_LED_PIN (8)
 
+#define ADV_BLINKING
+//#undef ADV_BLINKING
+
+#ifdef ADV_BLINKING
+#define APP_TIMER_PRESCALER	0
+#define APP_TIMER_MAX_TIMERS	2
+#define APP_TIMER_QUEUE_SIZE	4
+
+#define ADV_BLINKING_INTERVAL	APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER) 
+
+app_timer_id_t m_advblink_timer;
+#endif
+
 static uint8_t m_base_uuid_type;
 static ble_gatts_char_handles_t  m_char_handles;
+
+static void advertising_start()
+{
+	uint32_t err_code;
+	ble_gap_adv_params_t adv_params;
+
+	memset(&adv_params, 0, sizeof(adv_params));
+
+	adv_params.type = BLE_GAP_ADV_TYPE_ADV_IND;
+	adv_params.p_peer_addr = NULL;
+	adv_params.fp = BLE_GAP_ADV_FP_ANY;
+	adv_params.interval = APP_ADV_INTERVAL;
+	adv_params.timeout = APP_ADV_TIMEOUT_IN_SECONDS;
+
+	err_code = sd_ble_gap_adv_start(&adv_params);
+	APP_ERROR_CHECK(err_code);
+
+#ifdef ADV_BLINKING
+	err_code = app_timer_start(m_advblink_timer, ADV_BLINKING_INTERVAL, NULL);
+#endif
+}
 
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_CONNECTED:
 		simple_uart_putstring((const uint8_t*) "Connected\r\n");
+		app_timer_stop(m_advblink_timer);
 		nrf_gpio_pin_set(RX_GREEN_LED_PIN);
 	break;
 
 	case BLE_GAP_EVT_DISCONNECTED:
 		simple_uart_putstring((const uint8_t*) "Disconnected\r\n");
 		nrf_gpio_pin_clear(RX_GREEN_LED_PIN);
+		advertising_start();
 	break;
 
 	default:
@@ -103,23 +140,6 @@ static void advertising_init(void)
 	options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
 
 	err_code = ble_advertising_init(&advdata, NULL, &options, on_adv_evt, NULL);
-	APP_ERROR_CHECK(err_code);
-}
-
-void advertising_start()
-{
-	uint32_t err_code;
-	ble_gap_adv_params_t adv_params;
-
-	memset(&adv_params, 0, sizeof(adv_params));
-
-	adv_params.type = BLE_GAP_ADV_TYPE_ADV_IND;
-	adv_params.p_peer_addr = NULL;
-	adv_params.fp = BLE_GAP_ADV_FP_ANY;
-	adv_params.interval = APP_ADV_INTERVAL;
-	adv_params.timeout = APP_ADV_TIMEOUT_IN_SECONDS;
-
-	err_code = sd_ble_gap_adv_start(&adv_params);
 	APP_ERROR_CHECK(err_code);
 }
 
@@ -217,11 +237,25 @@ static void services_init(void)
 	APP_ERROR_CHECK(err_code);
 }
 
+#ifdef ADV_BLINKING
+static void advblink_handler(void *p_context)
+{
+	nrf_gpio_pin_toggle(RX_GREEN_LED_PIN);
+}
+#endif
 
 int main(void)
 {
+	uint32_t err_code;
+
 	simple_uart_config(6, 10, 5, 4, false);
 	nrf_gpio_cfg_output(RX_GREEN_LED_PIN);
+
+#ifdef ADV_BLINKING
+	APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_QUEUE_SIZE, NULL);
+	err_code = app_timer_create(&m_advblink_timer, APP_TIMER_MODE_REPEATED, advblink_handler);
+	APP_ERROR_CHECK(err_code);
+#endif
 
 	ble_stack_init();
 
