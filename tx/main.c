@@ -74,6 +74,7 @@ static void polling_timer_handler(void *p_context)
 		if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
 			err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 			APP_ERROR_CHECK(err_code);
+			cnt = 0;
 		} else {
 			simple_uart_putstring((const uint8_t *)"ERROR: POLLING OUTSIDE CONNECTION!\r\n");
 		}
