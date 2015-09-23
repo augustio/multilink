@@ -498,23 +498,23 @@ static void spi_register_conf(void)
 
 static void gyroEnable()
 {
-	uint16_t tx_buffer2[2]; //Transmit buffer to send data from SPI master with sample data.
-	uint16_t *tx2 = tx_buffer2;
+	uint16_t tx_buffer[2]; //Transmit buffer to send data from SPI master with sample data.
+	uint16_t *tx = tx_buffer;
 
-	tx_buffer2[0] = 0x1100 | 0x40; // CTRL2_G: Set gyro 104 Hz, 245 dps full scale.
-	tx_buffer2[1] = 0x0000;
-	spi_sw_master_send_bytes(tx2, NULL, 2);
+	tx_buffer[0] = 0x1100 | 0x40; // CTRL2_G: Set gyro 104 Hz, 245 dps full scale.
+	tx_buffer[1] = 0x0000;
+	spi_sw_master_send_bytes(tx, NULL, 2);
 	gyro_enabled = 1;
 }
 
 static void gyroDisable() 
 {	
-	uint16_t tx_buffer2[2]; //Transmit buffer to send data from SPI master with sample data.
-	uint16_t *tx2 = tx_buffer2;
+	uint16_t tx_buffer[2]; //Transmit buffer to send data from SPI master with sample data.
+	uint16_t *tx = tx_buffer;
 
-	tx_buffer2[0] = 0x1100 | 0x00; // CTRL2_G: Set gyro power down.
-	tx_buffer2[1] = 0x0000;
-	spi_sw_master_send_bytes(tx2, NULL, 2);
+	tx_buffer[0] = 0x1100 | 0x00; // CTRL2_G: Set gyro power down.
+	tx_buffer[1] = 0x0000;
+	spi_sw_master_send_bytes(tx, NULL, 2);
 	gyro_enabled = 0;
 }
 
