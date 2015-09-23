@@ -403,6 +403,7 @@ static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
 
 static void sys_evt_dispatch(uint32_t sys_evt)
 {
+	pstorage_sys_event_handler(sys_evt);
 }
 
 #define CHECK_ERROR_CODE do { \
