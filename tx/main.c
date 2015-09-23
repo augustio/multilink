@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "ble_hci.h"
+#include "app_timer.h"
 #include "simple_uart.h"
 #include "softdevice_handler.h"
 #include "sw_spi.h"
@@ -39,11 +41,45 @@ static bool start_scan = false;
 static bool scanning = false;
 static bool in_connection = false;
 
+static uint16_t m_conn_handle;
+
+#define APP_TIMER_PRESCALER	0
+#define APP_TIMER_MAX_TIMERS	6
+#define APP_TIMER_QUEUE_SIZE	10
+
+#define POLLING_INTERVAL APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
+
+static app_timer_id_t m_polling_timer;
+
+static int cnt; // FIXME remove from production
+
 typedef struct
 {
 	uint8_t  *p_data;
 	uint16_t data_len;
 } data_t;
+
+static void polling_timer_handler(void *p_context)
+{
+	uint32_t err_code;
+
+	{
+		char buf[8];
+		sprintf(buf, "%d\r\n", cnt);
+		simple_uart_putstring((const uint8_t *)"timer handler, cnt = ");
+		simple_uart_putstring((const uint8_t *)buf);
+	}
+
+	if (cnt++ == 10) {
+		if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
+			err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+			APP_ERROR_CHECK(err_code);
+		} else {
+			simple_uart_putstring((const uint8_t *)"ERROR: POLLING OUTSIDE CONNECTION!\r\n");
+		}
+
+	}
+}
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
 {
@@ -266,6 +302,7 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 {
 	switch (p_event->event_id) {
 	char buf[32];
+	uint32_t err_code;
 	case DM_EVT_CONNECTION:
 	{
 		ble_gap_addr_t *peer_addr = &p_event->event_param.p_gap_param->params.connected.peer_addr;
@@ -276,12 +313,21 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 		simple_uart_putstring((const uint8_t *)"Connected to ");
 		simple_uart_putstring((const uint8_t *)buf);
+
+		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
+
+		err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
+		APP_ERROR_CHECK(err_code);
 		
 	}
 	break;
 
 	case DM_EVT_DISCONNECTION:
 		simple_uart_putstring((const uint8_t *)"DM_EVENT_DISCONNECTION\r\n");
+		err_code = app_timer_stop(m_polling_timer);
+		APP_ERROR_CHECK(err_code);
+		m_conn_handle = BLE_CONN_HANDLE_INVALID;
+		in_connection = false;
 	break;
 
 	case DM_EVT_SECURITY_SETUP:
@@ -349,6 +395,19 @@ static void device_manager_init(bool erase_bonds)
 	APP_ERROR_CHECK(err_code);
 }
 
+static void timers_init()
+{
+	APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_QUEUE_SIZE, NULL);
+}
+
+static void timers_create()
+{
+	uint32_t err_code;
+
+	err_code = app_timer_create(&m_polling_timer, APP_TIMER_MODE_REPEATED, polling_timer_handler);
+	APP_ERROR_CHECK(err_code);
+}
+
 int main(void)
 {
 	simple_uart_config(11, 12, 11, 11, false);
@@ -358,6 +417,8 @@ int main(void)
 
 	spi_sw_master_init();
 	spi_register_conf();
+	timers_init();
+	timers_create();
 	gpio_init();
 
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
@@ -389,3 +450,5 @@ void GPIOTE_IRQHandler(void)
 			start_scan = true;
 	}
 }
+
+#define POLLING_INTERVAL APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
