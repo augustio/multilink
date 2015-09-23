@@ -1,5 +1,12 @@
-/*Basic structure of how the gesture control process should proceed plus the necessary math. 
-MISSING DATA ENTRY, TIMER AND COMMUNICATION WITH BLE STACK. HAS LOTS OF LEGACY CONTENT AND WILL NOT WORK OR BUILD!
+/*Timer event driven (T=10ms) gesture control process plus the necessary math. 
+MISSING: 
+	TIMER, COMMUNICATION WITH BLE STACK (see pseudocode comments)
+TODO: 
+- Move declarations to pseudo_motion_sensor.h
+- Global variables used here might be a problem
+- Lot of cleanup
+- ble_operation_in_progress flag needs to be implemented
+
 */
 
 #include "math.h"
@@ -8,8 +15,7 @@ MISSING DATA ENTRY, TIMER AND COMMUNICATION WITH BLE STACK. HAS LOTS OF LEGACY C
 #include <stdint.h>
 #include "nrf_gpio.h"
 
-#define DOUBLE_TAP_HIGH 		1
-#define IMU_INT1				9
+#define IMU_INT1				9 //WHY IS THIS HERE?
 
 double calcDx();
 double calcDy();
@@ -66,24 +72,31 @@ double phi_ccw = -40.0; // degree
 double phi_neutral_cw = 20; //clockwise activation angle, phi_activate/2 degree
 double phi_neutral_ccw = -20; //counterclockwise activation angle, phi_activate/2 degree
 double yaw_activate = 200.0; // degree per second
-double timeout = 5000; //ms
 int stationary_limit = 5; // How many data points arm needs to be relatively stationary before recognizing gestures. ~10ms/data point
 int verbose_vibrations = 0; // Boolean. Verbose vibrations for interface testing without receivers.
 int three_command_mode = 0; // Boolean
 int no_continuous = 0; // Boolean. Set to 1 if user cannot reliably return from pronation/supination.
-int repeats = 3; // If no_continuous is set, how many times increase/decrease is repeated per gesture.
-int repeat_delay = 100; // Only multiples of 10 ms valid
+int short_vibe_ticks = 10;
+int long_vibe_ticks = 20;
+int looong_vibe_ticks = 24;
 
 // Values that change during runtime
+Motion_sensor_states current_motion_sensor_state = GETTING_START_STATE;
+Motion_sensor_states next_state = GETTING_START_STATE; //For buzzes and delays
+Vibration_modes vibration_mode = VIBRATION_MODE_NORMAL;
+int buzz_buzz_state = 0;
+int delay_ticks = 0;
+int delay_ticks_after_vibration = 0;
 int orientation = -1; // 0 = neutral, 1 = up, 2 = CCW, 3 = CW, 4 = down, -1 = not defined
 int stationary_counter = 0;
 int gyro_enabled = 0; // Boolean
-int receiver_chosen = 0; // Boolean
 int device_commands = 5; // Initialise to 0 for actual operation. Valid values 1, 3 or 5.
 int primary_continuous = 0; // Boolean value received from receivers. Volume etc: 1, channel etc: 0
-int connected = 0;
-int nReceivers = 0;
-int end = 0;
+int ble_operation_in_progress = 0; //If 1, BLE connected and idle. 
+
+//////////////////
+///IMU HANDLING///
+//////////////////
 
 void getXYZValues() 
 {
@@ -122,7 +135,8 @@ void getXYZValues()
 	}
 }
 
-void getGyroValues() {
+void getGyroValues() 
+{
 	// Yaw only
 	uint16_t tx_buffer[2];
 	uint8_t rx_buffer[2];
@@ -159,43 +173,115 @@ void gyroDisable()
 	gyro_enabled = 0;
 }
 
-void vibrateShort() {
-	nrf_gpio_pin_set(10);
-	compute_delay(100);
-	nrf_gpio_pin_clear(10);
-	compute_delay(50);
+////////////////////
+///STATE HANDLERS///
+////////////////////
+
+void delay()
+{
+	if (delay_ticks <= 0)
+		current_motion_sensor_state = next_state;
 }
 
-void vibrateLong() {
-	nrf_gpio_pin_set(10);
-	compute_delay(200);
-	nrf_gpio_pin_clear(10);
-	compute_delay(100);
+void vibrate()
+{
+	if (vibration_mode == VIBRATION_MODE_NORMAL)
+	{
+		if (delay_ticks <= 0)
+		{
+			nrf_gpio_pin_clear(10);
+			if (delay_ticks_after_vibration > 0) //Horrible way of combining vibration & delay
+			{
+				DELAY_WITH_STATE_CHANGE(delay_ticks_after_vibration,next_state);
+				delay_ticks_after_vibration = 0;
+			}
+			else
+				current_motion_sensor_state = next_state;
+		}
+		else
+			nrf_gpio_pin_set(10); //This will set the pin multiple times, but it shouldn't matter
+	}
+	else if (vibration_mode == VIBRATION_MODE_BUZZ_BUZZ)
+	{
+		if (buzz_buzz_state == 0)
+		{
+			if (delay_ticks <= 0)
+			{
+				nrf_gpio_pin_clear(10);
+				buzz_buzz_state = 1;
+				delay_ticks = 15;
+			}
+			else
+				nrf_gpio_pin_set(10);
+		}
+		else //The pause part
+		{
+			if (delay_ticks <= 0)
+			{
+				buzz_buzz_state = 0; //Unnecessary
+				delay_ticks = short_vibe_ticks;
+				vibration_mode = VIBRATION_MODE_NORMAL; //Vibrate rest in normal mode
+			}
+		}
+	}
 }
 
-void vibrateLooong() {
-	nrf_gpio_pin_set(10);
-	compute_delay(240);
-	nrf_gpio_pin_clear(10);
-	compute_delay(240);
+/*Starting point */
+void gestureControl() 
+{
+	buzz_buzz_state = 0;
+	delay_ticks = 0;
+	delay_ticks_after_vibration = 0;
+	orientation = -1; 
+	stationary_counter = 0;
+	gyro_enabled = 0; 
+	VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,GETTING_START_STATE,VIBRATION_MODE_BUZZ_BUZZ,20);
 }
 
 void endGestureControl()
 {
-	//Stop reading more values (stop timer?)
 	gyroDisable();
+	buzz_buzz_state = 0;
+	delay_ticks = 0;
+	delay_ticks_after_vibration = 0;
+	orientation = -1; 
+	stationary_counter = 0;
+	gyro_enabled = 0;
+	//Stop reading more values (stop timer?)
 	//disconnect ble
-	connected = 0;
-	receiver_chosen = 0;
-	nReceivers = 0;
-	orientation = -1;
-	vibrateLooong();
+}
+
+void timer_10ms_tick_handler()
+{
+	if (delay_ticks > 0)
+		delay_ticks--;
+	
+	switch(current_motion_sensor_state)
+	{
+		case GETTING_START_STATE:
+			getStartingState();
+			break;
+		case RECEIVER_SELECTION:
+			selectReceiver();
+			break;
+		case RECEIVER_CONTROL:
+			controlReceiver();
+			break;
+		case SHUTDOWN_STATE:
+			endGestureControl();
+			break;
+		case VIBRATION_STATE:
+			vibrate();
+			break;
+		case DELAY_STATE:
+			delay();
+			break;
+	}
 }
 
 void getStartingState() 
 {
-
-	while (orientation < 0) //Continue until orientation is set
+	if (!ble_operation_in_progress) //Don't do anything if we are in the middle of doing something with the ble connections
 	{
 		getXYZValues();
 		if (armIsStationary()) 
@@ -203,73 +289,59 @@ void getStartingState()
 			if (armIsNeutral()) 
 			{ //tarkistetaan onko ranneke neutraaliasennossa
 				orientation = 0;
+				current_motion_sensor_state = RECEIVER_SELECTION;
 				break;
 			} 
 			else if (armIsUp()) 
 			{   //käden nosto
+				current_motion_sensor_state = RECEIVER_SELECTION;
 				orientation = 1;
 				break;
 			} 
 			else if (armRotation() == -1) 
 			{   //pronaatio
+				current_motion_sensor_state = RECEIVER_SELECTION;
 				orientation = 2;
 				break;
 			} 
 			else if (armRotation() == 1) 
 			{   //supinaatio
 				orientation = 3;
+				current_motion_sensor_state = RECEIVER_SELECTION;
 				break;
 			} 
 			else if (armIsDown()) 
 			{   //käden lasku
 				orientation = 4;
+				current_motion_sensor_state = RECEIVER_SELECTION; //This is normally shutdown
 				break;
 			}
-		}
-		//Wait for new values
-		//compute_delay(10);
-		
+		}	
 	}
 }
 
-void chooseReceiver() {
-	receiver_chosen = 1;
-	if (device_commands == 5 && !three_command_mode) {
-		gyroEnable();
-	}
-	if (verbose_vibrations) {
-		vibrateShort();
-		vibrateShort();
-		vibrateShort();
-		compute_delay(100);
-	}
-}
-
-int selectReceiver()
+void selectReceiver()
 {
-	getStartingState();
-	
-	while(!receiverChosen)
-	{
 		getXYZValues();
-		if (!ble_connection_change_in_progress) //Don't do anything if we are in the middle of doing something with the ble connections
+		if (!ble_operation_in_progress) //Don't do anything if we are in the middle of doing something with the ble connections
 		{
-			//I don't know how this should be implemented (maybe in the interrupt?) DEFINITELY NOT LIKE THIS!!!
-			if (nrf_gpio_pin_read(IMU_INT1) == DOUBLE_TAP_HIGH)  // Double tap. Only if not controlling a receiver. Interrupt lasts for 120 ms so should be readable without latching.
+			if (double_tap_received)  // Double tap. Only if not controlling a receiver. Interrupt lasts for 120 ms so should be readable without latching.
 			{
-				
+				double_tap_received = 0;
 				changeRoom(); //Pseudocode
 				//New ble connection
+				//No buzz?
 			}
-			if (armIsStationary()) 
+			else if (armIsStationary()) 
 			{
-				if (armIsNeutral()) //Should be just armisneutral()
+				if (armIsNeutral())
 				{ //check if controller is neutral position
 					orientation = 0;
 				} 
 				else if (orientation != 1 && armIsUp()) 
 				{   // forearm up 
-					receiverChosen = 1;
+					VIBRATION_WITH_STATE_CHANGE(long_vibe_ticks,RECEIVER_CONTROL,VIBRATION_MODE_NORMAL,10);
+					//current_motion_sensor_state = RECEIVER_CONTROL;				
 					orientation = 1;
 				} 
 				else if (orientation != 1 && orientation != 2 && (armRotation() == -1)) 
@@ -277,43 +349,49 @@ int selectReceiver()
 					previousReceiver(); //pseudocode
 					if (verbose_vibrations) 
 					{
-						vibrateShort();
-						//compute_delay(300);
-					}				
+						VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_SELECTION,VIBRATION_MODE_NORMAL,30);
+					}
 				}
 				else if (orientation != 1 && orientation != 3 && (armRotation() == 1)) 
 				{   // cw
-					nextReceiver();
+					nextReceiver(); //pseudocode
 					if (verbose_vibrations) 
 					{
-						vibrateShort();
-						//compute_delay(300);
+						VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_SELECTION,VIBRATION_MODE_NORMAL,30);
 					}	
 					orientation = 3;
 				} 
-				else if (orientation != 4 && armIsDown()) //Orientation cannot be 4 here, but whatever...
+				else if (orientation != 4 && armIsDown())
 				{   // forearm down
 					orientation = 4;
-					return 0;
+
+					VIBRATION_WITH_STATE_CHANGE(looong_vibe_ticks,SHUTDOWN_STATE,VIBRATION_MODE_NORMAL,0);
+					/*if (verbose_vibrations) 
+					{
+						VIBRATION_WITH_STATE_CHANGE(looong_vibe_ticks,SHUTDOWN_STATE,VIBRATION_MODE_NORMAL,0);
+					}
+					else
+						current_motion_sensor_state = SHUTDOWN_STATE;
+					*/
 				}
 			}
 		}
-		//Sleep while waiting for next update tick
-	}
-	return 1;
 }
 
-int controlReceiver()
+void controlReceiver()
 {
-	if (device_commands == 1) //Select also activates the only function
+	if (device_commands == 5 && !gyro_enabled) //Enable gyro for swipes
+	{
+		gyroEnable();
+		gyro_enabled = 1;
+	}
+	
+	if (device_commands == 1) //Select also activates the only function and shuts the device down
 	{
 		sendToggle(); //pseudocode
-		return 1;
+		VIBRATION_WITH_STATE_CHANGE(looong_vibe_ticks,SHUTDOWN_STATE,VIBRATION_MODE_NORMAL,0);
 	}
-	if (device_commands == 5) //Enable gyro for swipes
-		gyroEnable();
-		
-	while (1)
+	else
 	{
 		getXYZValues();
 		if (!ble_operation_in_progress) //Don't accept new stuff while previous has not been sent & processed yet
@@ -327,17 +405,17 @@ int controlReceiver()
 				else if (orientation != 1 && armIsUp()) 
 				{   // forearm up
 					sendToggle(); //pseudoCode
+					orientation = 1;
 					if (verbose_vibrations) 
 					{
-						vibrateShort();
-						//compute_delay(300);
-					}
-					orientation = 1;
+						VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_CONTROL,VIBRATION_MODE_NORMAL,30);
+					}	
 				} 
 				else if (orientation != 1 && (armRotation() == -1)) 
 				{   // ccw
 					if (orientation != 2) 
 					{
+						orientation = 2;
 						if ((three_command_mode || (device_commands == 3)) && !primary_continuous) 
 						{
 							sendPrevious(); //pseudoCode
@@ -348,16 +426,15 @@ int controlReceiver()
 						}					
 						if (verbose_vibrations) 
 						{
-							vibrateShort();
-							//compute_delay(300);
-						}
-						orientation = 2;
+							VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_CONTROL,VIBRATION_MODE_NORMAL,30);
+						}	
 					}
 				} 
 				else if (orientation != 1 && (armRotation() == 1)) 
 				{   // cw
 					if (orientation != 3) 
-					{					
+					{
+						orientation = 3;
 						if ((three_command_mode || (device_commands == 3)) && !primary_continuous) 
 						{
 							sendNext();
@@ -369,16 +446,14 @@ int controlReceiver()
 
 						if (verbose_vibrations) 
 						{
-							vibrateShort();
-							//compute_delay(300);
-						}
-						orientation = 3;
+							VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_CONTROL,VIBRATION_MODE_NORMAL,30);
+						}					
 					}
 				}
 				else if (orientation != 4 && armIsDown()) 
-				{   // forearm down
+				{   // forearm down, The End
 					orientation = 4;
-					return 1; //The End
+					VIBRATION_WITH_STATE_CHANGE(looong_vibe_ticks,SHUTDOWN_STATE,VIBRATION_MODE_NORMAL,0);
 				}
 			}
 			if (gyro_enabled && orientation == 0) // neutral orientation prerequisite for accepting swipes
@@ -389,60 +464,31 @@ int controlReceiver()
 					sendNext(); //pseudoCode
 					if (verbose_vibrations) 
 					{
-						vibrateShort();
+						VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_CONTROL,VIBRATION_MODE_NORMAL,70);
 					}
-					compute_delay(700); // Long delay to prevent activation on backstroke
+					else
+						DELAY_WITH_STATE_CHANGE(70,RECEIVER_CONTROL);
+					//compute_delay(700); // Long delay to prevent activation on backstroke
 				} 
 				else if (swipeRight()) 
 				{
 					sendPrevious(); //pseudoCode
 					if (verbose_vibrations) 
 					{
-						vibrateShort();
+						VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_CONTROL,VIBRATION_MODE_NORMAL,70);
 					}
-					compute_delay(700); // Long delay to prevent activation on backstroke
+					else
+						DELAY_WITH_STATE_CHANGE(70,RECEIVER_CONTROL);
+						//compute_delay(700); // Long delay to prevent activation on backstroke
 				}
 			}
 		}
-		//Sleep while waiting for next update tick
-	}				
-	return 0;
-}
-
-/*Starting point */
-int gestureControl() 
-{
-	//Start scanning
-	//Wait until scan complete and device_manager populated
-
-	if (receivers > 0) //placeHolder
-	{
-		//connect to best RSSI
-		
-		//Give tactile response for established connection
-		vibrateShort();
-		compute_delay(150);
-		vibrateShort();
-	}
-	else //If no receivers go back to sleep
-	{
-		endGestureControl();		
-		return 0;
-	}
-
-	if(selectReceiver())
-	{
-		controlReceiver();
-		endGestureControl();
-		return 1;
-	}
-	else
-	{
-		endGestureControl();		
-		return 1;
 	}
 }
 
+/////////////////////////
+///MATH SECTION BEGINS///
+/////////////////////////
 
 int armIsStationary() {
 	if (dg < dg_limit && fabs(g - 1) < g_limit) {
