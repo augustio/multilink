@@ -152,7 +152,7 @@ nrf51422_xxac_s120: OUTPUT_FILENAME := nrf51422_xxac_s120
 nrf51422_xxac_s120: LINKER_SCRIPT=ble_app_hrs_c_gcc_nrf51.ld
 nrf51422_xxac_s120: $(BUILD_DIRECTORIES) $(OBJECTS)
 	@echo Linking target: $(OUTPUT_FILENAME).out
-	$(NO_ECHO)$(CC) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).out
+	$(NO_ECHO)$(CC) $(LDFLAGS) $(OBJECTS) $(LIBS) -lm -o $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).out
 	$(NO_ECHO)$(MAKE) -f $(MAKEFILE_NAME) -C $(MAKEFILE_DIR) -e finalize
 
 ## Create build directories
