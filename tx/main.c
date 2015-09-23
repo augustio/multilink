@@ -84,8 +84,19 @@ static double dg;
 static double theta; // Deviation from horizontal in degrees (-90,90). Up positive.
 static double phi; // Deviation from semipronation in degrees (-90,90). Clockwise positive.
 
-static double theta_high = 45.0; // degree
-static double theta_low = -60.0; // degree
+static double yaw = 0.0; // FIXME remember to connect this to gyro state
+
+static const double theta_high = 45.0; // degree
+static const double theta_low = -60.0; // degree
+static const double phi_neutral_cw = 20; //clockwise activation angle, phi_activate/2 degree
+static const double phi_neutral_ccw = -20; //counterclockwise activation angle, phi_activate/2 degree
+static const double theta_neutral_high = 20.0; // theta_high/2 degree
+static const double theta_neutral_low = -45.0; // degree
+static const double yaw_limit = 50;
+static const double theta_limit_high = 35.0; // degree, above this blocks phi recognition
+static const double theta_limit_low = -45.0; // degree, below this blocks phi recognition
+static const double phi_cw = 40.0; // degree
+static const double phi_ccw = -40.0; // degree
 
 //delta y from last value
 static double calcDy()
@@ -177,8 +188,30 @@ static int armIsDown()
 	return (theta < theta_low);
 }
 
+static int armIsNeutral()
+{
+	return (phi < phi_neutral_cw && phi > phi_neutral_ccw
+			&& theta < theta_neutral_high && theta > theta_neutral_low);
+}
+
+static int armRotation()
+{
+	if (fabs(yaw) > yaw_limit || theta > theta_limit_high
+			|| theta < theta_limit_low || fabs(phi) > 80) {
+		return 0;
+	} else if (phi > phi_cw) {
+		return 1;
+	} else if (phi < phi_ccw) {
+		return -1;
+	} else {
+		return 0;
+	}
+}
+
 static void polling_timer_handler(void *p_context)
 {
+	int rot;
+
 	getXYZValues();
 
 	if (armIsUp())
@@ -186,6 +219,15 @@ static void polling_timer_handler(void *p_context)
 
 	if (armIsDown())
 		simple_uart_putstring((const uint8_t *)"Down\r\n");
+
+	if (armIsNeutral())
+		simple_uart_putstring((const uint8_t *)"Neutral\r\n");
+
+	if ((rot = armRotation())) {
+		char buf[16];
+		sprintf(buf, "rot = %d\r\n", rot);
+		simple_uart_putstring((const uint8_t *)buf);
+	}
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
