@@ -13,12 +13,6 @@
 #define SPIM0_INT1_PIN		9		/**< SPI Interrupt1 GPIO pin number */
 
 void spi_sw_master_init();
-void spi_sw_master_send_bytes(uint16_t* const tx_buffer, uint8_t* const rx_buffer, uint16_t buffer_len);
-//void spi_sw_master_send_bytes2(uint16_t* const tx_buffer, uint8_t* const rx_buffer, uint16_t buffer_len, uint32_t freq);
-//void spi_sw_master_send_conf(uint16_t* const tx_buffer, uint32_t buffer_len, uint32_t freq);
-void spi_interrupt(uint8_t* const interrupt);
-
-//initialize SPI and send bytes
-void init_spi();
+void spi_sw_master_send_bytes(uint16_t *tx_buffer, uint8_t *rx_buffer, uint16_t buffer_len);
 
 #endif

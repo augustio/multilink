@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <math.h>
+
 #include "ble_hci.h"
 #include "app_timer.h"
 #include "simple_uart.h"
@@ -47,11 +49,9 @@ static uint16_t m_conn_handle;
 #define APP_TIMER_MAX_TIMERS	6
 #define APP_TIMER_QUEUE_SIZE	10
 
-#define POLLING_INTERVAL APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
+#define POLLING_INTERVAL APP_TIMER_TICKS(500, APP_TIMER_PRESCALER)
 
 static app_timer_id_t m_polling_timer;
-
-static int cnt; // FIXME remove from production
 
 typedef struct
 {
@@ -59,26 +59,123 @@ typedef struct
 	uint16_t data_len;
 } data_t;
 
+#define SAVED_ACCELERATION_BUFFER_SIZE (2)
+#define n (SAVED_ACCELERATION_BUFFER_SIZE - 1)
+
+typedef struct accel {
+	double x[SAVED_ACCELERATION_BUFFER_SIZE];
+	double y[SAVED_ACCELERATION_BUFFER_SIZE];
+	double z[SAVED_ACCELERATION_BUFFER_SIZE];
+} accel_t;
+
+static accel_t acc;
+
+static double calcDx()
+{
+	double dxv = acc.x[n] - acc.x[n - 1];
+	return dxv;
+}
+
+static double dx;
+static double dy;
+static double dz;
+static double g;
+static double dg;
+static double theta; // Deviation from horizontal in degrees (-90,90). Up positive.
+static double phi; // Deviation from semipronation in degrees (-90,90). Clockwise positive.
+
+//delta y from last value
+static double calcDy()
+{
+	double dyv = acc.y[n] - acc.y[n - 1];
+	return dyv;
+}
+
+//delta z from last value
+static double calcDz()
+{
+	double dzv = acc.z[n] - acc.z[n - 1];
+	return dzv;
+}
+
+static double calcG()
+{
+	double gv = sqrt(pow(acc.x[n], 2.0) + pow(acc.y[n], 2.0) + pow(acc.z[n], 2.0));
+	return gv;
+}
+
+static double calcDg()
+{
+	double dgv = sqrt(pow(dx, 2.0) + pow(dy, 2.0) + pow(dz, 2.0));
+	return dgv;
+}
+
+static double calcTheta()
+{
+	double thetav = asin(acc.x[n] / g) * 180 / M_PI;
+	return thetav;
+}
+
+static double calcPhi()
+{
+	double phiv = atan(
+			acc.z[n] / sqrt(0.001 * pow(acc.x[n], 2.0) + pow(acc.y[n], 2.0)))
+			* 180 / M_PI;
+	if (acc.y[n] > 0) {
+		return -phiv;
+	} else {
+		return phiv;
+	}
+}
+
+static void getXYZValues()
+{
+	uint16_t tx_buffer[6];
+	uint8_t rx_buffer[6];
+	accel_t acc_temp;
+
+	tx_buffer[0] = 0x2800 | 0x8000;
+	tx_buffer[1] = 0x2900 | 0x8000;
+	tx_buffer[2] = 0x2A00 | 0x8000;
+	tx_buffer[3] = 0x2B00 | 0x8000;
+	tx_buffer[4] = 0x2C00 | 0x8000;
+	tx_buffer[5] = 0x2D00 | 0x8000;
+
+	spi_sw_master_send_bytes(tx_buffer, rx_buffer, 6);
+
+	acc.x[0] = acc.x[1];
+	acc.y[0] = acc.y[1];
+	acc.z[0] = acc.z[1];
+	acc_temp.x[0] = (rx_buffer[0] + rx_buffer[1] * 0x0100);
+	acc_temp.y[0] = (rx_buffer[2] + rx_buffer[3] * 0x0100);
+	acc_temp.z[0] = (rx_buffer[4] + rx_buffer[5] * 0x0100);
+
+	// Normitus s.e. g = 1 ja poistetaan datasta nollat
+	acc.x[1] = -acc_temp.x[0] / (double) 0x2000 + 0.00001; // +x = kyynärpäätä kohti
+	acc.y[1] = acc_temp.y[0] / (double) 0x2000 + 0.00001; //
+	acc.z[1] = -acc_temp.z[0] / (double) 0x2000 + 0.00001; // +z = kämmentä kohti
+	dx = calcDx();
+	dy = calcDy();
+	dz = calcDz();
+	g = calcG();
+	dg = calcDg();
+	theta = calcTheta();
+	phi = calcPhi();
+}
+
+static char buf[128];
+
 static void polling_timer_handler(void *p_context)
 {
-	uint32_t err_code;
-
+	getXYZValues();
 	{
-		char buf[8];
-		sprintf(buf, "%d\r\n", cnt);
-		simple_uart_putstring((const uint8_t *)"timer handler, cnt = ");
+		char buf_x[16], buf_y[16], buf_z[16];
+		sprintf(buf_x, "%.3f", acc.x[1]);
+		sprintf(buf_y, "%.3f", acc.y[1]);
+		sprintf(buf_z, "%.3f", acc.z[1]);
+		sprintf(buf, "Got XYZ values: x = %s, y = %s, z = %s\r\n", buf_x, buf_y, buf_z);
+
 		simple_uart_putstring((const uint8_t *)buf);
-	}
-
-	if (cnt++ == 10) {
-		if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
-			err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-			APP_ERROR_CHECK(err_code);
-			cnt = 0;
-		} else {
-			simple_uart_putstring((const uint8_t *)"ERROR: POLLING OUTSIDE CONNECTION!\r\n");
-		}
-
 	}
 }
 
@@ -451,5 +548,3 @@ void GPIOTE_IRQHandler(void)
 			start_scan = true;
 	}
 }
-
-#define POLLING_INTERVAL APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
