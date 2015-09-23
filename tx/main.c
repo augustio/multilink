@@ -256,12 +256,19 @@ static void polling_timer_handler(void *p_context)
 {
 	getXYZValues();
 	getGyroValues();
+
+	if (armIsDown()) {
+		uint32_t err_code;
+		err_code = sd_ble_gap_disconnect(m_conn_handle,
+				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+		APP_ERROR_CHECK(err_code);
+
+		simple_uart_putstring((const uint8_t *)"Down\r\n");
+	}
+
 #if 0
 	if (armIsUp())
 		simple_uart_putstring((const uint8_t *)"Up\r\n");
-
-	if (armIsDown())
-		simple_uart_putstring((const uint8_t *)"Down\r\n");
 
 	if (armIsNeutral())
 		simple_uart_putstring((const uint8_t *)"Neutral\r\n");
@@ -500,6 +507,16 @@ static void gyroEnable()
 	gyro_enabled = 1;
 }
 
+static void gyroDisable() 
+{	
+	uint16_t tx_buffer2[2]; //Transmit buffer to send data from SPI master with sample data.
+	uint16_t *tx2 = tx_buffer2;
+
+	tx_buffer2[0] = 0x1100 | 0x00; // CTRL2_G: Set gyro power down.
+	tx_buffer2[1] = 0x0000;
+	spi_sw_master_send_bytes(tx2, NULL, 2);
+	gyro_enabled = 0;
+}
 
 static void gpio_init(void)
 {
@@ -528,9 +545,10 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
 
+		gyroEnable();
+
 		err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
 		APP_ERROR_CHECK(err_code);
-		
 	}
 	break;
 
@@ -538,6 +556,9 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		simple_uart_putstring((const uint8_t *)"DM_EVENT_DISCONNECTION\r\n");
 		err_code = app_timer_stop(m_polling_timer);
 		APP_ERROR_CHECK(err_code);
+
+		gyroDisable();
+
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
 		in_connection = false;
 	break;
@@ -629,7 +650,6 @@ int main(void)
 
 	spi_sw_master_init();
 	spi_register_conf();
-	gyroEnable();
 	timers_init();
 	timers_create();
 	gpio_init();
