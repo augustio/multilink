@@ -1,11 +1,8 @@
 /*Missing lot of declarations. Should move them from pseudo_motion_sensor.c
 Probably should not use function macros
-Is this how enums work (in the .c)?
 */
 
-//What is the purpose of these:
-#ifndef MOTION_SENSOR_H 
-#define MOTION_SENSOR_H
+#include <stdint.h>
 
 #define SAVED_ACCELERATION_BUFFER_SIZE 2
 #define DELAY_WITH_STATE_CHANGE(ticks,n_s) current_motion_sensor_state=DELAY_STATE; next_state=n_s; delay_ticks=ticks
@@ -60,5 +57,3 @@ void controlReceiver();
 void gestureControl();
 void timer_10ms_tick_handler();
 
-
-#endif
