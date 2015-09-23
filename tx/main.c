@@ -68,7 +68,7 @@ typedef struct accel {
 	double z[SAVED_ACCELERATION_BUFFER_SIZE];
 } accel_t;
 
-static accel_t acc;
+static accel_t acc, gyro;
 
 static double calcDx()
 {
@@ -83,6 +83,7 @@ static double g;
 static double dg;
 static double theta; // Deviation from horizontal in degrees (-90,90). Up positive.
 static double phi; // Deviation from semipronation in degrees (-90,90). Clockwise positive.
+static double yawv;
 
 static double yaw = 0.0; // FIXME remember to connect this to gyro state
 
@@ -97,6 +98,9 @@ static const double theta_limit_high = 35.0; // degree, above this blocks phi re
 static const double theta_limit_low = -45.0; // degree, below this blocks phi recognition
 static const double phi_cw = 40.0; // degree
 static const double phi_ccw = -40.0; // degree
+static const double yaw_activate = 200.0; // degree per second
+
+static bool gyro_enabled = false;
 
 //delta y from last value
 static double calcDy()
@@ -208,12 +212,51 @@ static int armRotation()
 	}
 }
 
+static double calcYaw() 
+{
+	// This could be improved to take  orientation into account
+	// Now assumes perfect semipronation
+	if (acc.y[n] > 0) {
+		yawv = gyro.y[n];
+	} else {
+		yawv = -gyro.y[n];
+	}
+	return yawv;
+}
+
+static int swipeRight()
+{
+	return (yaw > yaw_activate && fabs(fabs(acc.y[n]) - 1) < 0.2);
+}
+
+static int swipeLeft()
+{
+	return (yaw < -yaw_activate && fabs(fabs(acc.y[n]) - 1) < 0.2);
+}
+
+static void getGyroValues() 
+{
+	// Yaw only
+	uint16_t tx_buffer[2];
+	uint8_t rx_buffer[2];
+	int16_t tmp;
+
+	tx_buffer[0] = 0x2400 | 0x8000;
+	tx_buffer[1] = 0x2500 | 0x8000;
+	spi_sw_master_send_bytes(tx_buffer, rx_buffer, 2);
+
+	gyro.y[0] = gyro.y[1];
+	tmp = (rx_buffer[0] | (rx_buffer[1] << 8));
+
+	gyro.y[1] = -tmp / 114.28 + 0.001; // Yaw in degrees per second
+	yaw = calcYaw(); // If !gyro_enabled: yaw = 0
+}
+
 static void polling_timer_handler(void *p_context)
 {
-	int rot;
-
 	getXYZValues();
-
+	getGyroValues();
+#if 0
 	if (armIsUp())
 		simple_uart_putstring((const uint8_t *)"Up\r\n");
 
@@ -222,12 +265,20 @@ static void polling_timer_handler(void *p_context)
 
 	if (armIsNeutral())
 		simple_uart_putstring((const uint8_t *)"Neutral\r\n");
+#endif
+	if (swipeRight())
+		simple_uart_putstring((const uint8_t *)"SRight\r\n");
 
+	if (swipeLeft())
+		simple_uart_putstring((const uint8_t *)"SLeft\r\n");
+#if 0
+	int rot;
 	if ((rot = armRotation())) {
 		char buf[16];
 		sprintf(buf, "rot = %d\r\n", rot);
 		simple_uart_putstring((const uint8_t *)buf);
 	}
+#endif
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
@@ -438,6 +489,18 @@ static void spi_register_conf(void)
 	spi_sw_master_send_bytes(tx, rx, buf_len);
 }
 
+static void gyroEnable()
+{
+	uint16_t tx_buffer2[2]; //Transmit buffer to send data from SPI master with sample data.
+	uint16_t *tx2 = tx_buffer2;
+
+	tx_buffer2[0] = 0x1100 | 0x40; // CTRL2_G: Set gyro 104 Hz, 245 dps full scale.
+	tx_buffer2[1] = 0x0000;
+	spi_sw_master_send_bytes(tx2, NULL, 2);
+	gyro_enabled = 1;
+}
+
+
 static void gpio_init(void)
 {
 	nrf_gpio_cfg_sense_input(9, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_HIGH);
@@ -566,6 +629,7 @@ int main(void)
 
 	spi_sw_master_init();
 	spi_register_conf();
+	gyroEnable();
 	timers_init();
 	timers_create();
 	gpio_init();
