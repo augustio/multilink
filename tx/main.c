@@ -45,11 +45,13 @@ static bool in_connection = false;
 
 static uint16_t m_conn_handle;
 
+static int cnt;
+
 #define APP_TIMER_PRESCALER	0
 #define APP_TIMER_MAX_TIMERS	6
 #define APP_TIMER_QUEUE_SIZE	10
 
-#define POLLING_INTERVAL APP_TIMER_TICKS(10, APP_TIMER_PRESCALER)
+#define POLLING_INTERVAL APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
 
 static app_timer_id_t m_polling_timer;
 
@@ -254,6 +256,18 @@ static void getGyroValues()
 
 static void polling_timer_handler(void *p_context)
 {
+#if 1
+	if (cnt++ == 10) {
+		uint32_t err_code;
+		err_code = sd_ble_gap_disconnect(m_conn_handle,
+				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+		APP_ERROR_CHECK(err_code);
+
+			simple_uart_putstring((const uint8_t *)"Termintating connection...\r\n");
+	}
+#else
+	int rot;
+
 	getXYZValues();
 	getGyroValues();
 
@@ -266,20 +280,18 @@ static void polling_timer_handler(void *p_context)
 		simple_uart_putstring((const uint8_t *)"Down\r\n");
 	}
 
-#if 0
 	if (armIsUp())
 		simple_uart_putstring((const uint8_t *)"Up\r\n");
 
 	if (armIsNeutral())
 		simple_uart_putstring((const uint8_t *)"Neutral\r\n");
-#endif
+
 	if (swipeRight())
 		simple_uart_putstring((const uint8_t *)"SRight\r\n");
 
 	if (swipeLeft())
 		simple_uart_putstring((const uint8_t *)"SLeft\r\n");
-#if 0
-	int rot;
+
 	if ((rot = armRotation())) {
 		char buf[16];
 		sprintf(buf, "rot = %d\r\n", rot);
@@ -546,7 +558,7 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
 
-		gyroEnable();
+		//gyroEnable();
 
 		err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
 		APP_ERROR_CHECK(err_code);
@@ -558,7 +570,7 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		err_code = app_timer_stop(m_polling_timer);
 		APP_ERROR_CHECK(err_code);
 
-		gyroDisable();
+		//gyroDisable();
 
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
 		in_connection = false;
