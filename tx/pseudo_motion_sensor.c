@@ -6,11 +6,13 @@ TODO:
 - Global variables used here might be a problem
 - Lot of cleanup
 - ble_operation_in_progress flag needs to be implemented
+- math libraries need to be compiled linked somewhere
+- check if the enums and ints are compatible(e.g. current_motion_sensor_state)
 
 */
 
 #include "math.h"
-#include "motion_sensor.h"
+#include "pseudo_motion_sensor.h"
 #include "sw_spi.h"
 #include <stdint.h>
 #include "nrf_gpio.h"
@@ -81,9 +83,12 @@ int long_vibe_ticks = 20;
 int looong_vibe_ticks = 24;
 
 // Values that change during runtime
-Motion_sensor_states current_motion_sensor_state = GETTING_START_STATE;
-Motion_sensor_states next_state = GETTING_START_STATE; //For buzzes and delays
-Vibration_modes vibration_mode = VIBRATION_MODE_NORMAL;
+//Motion_sensor_states
+int current_motion_sensor_state = GETTING_START_STATE; 
+//Motion_sensor_states 
+int next_state = GETTING_START_STATE; //For buzzes and delays
+//Vibration_modes 
+int vibration_mode = VIBRATION_MODE_NORMAL;
 int buzz_buzz_state = 0;
 int delay_ticks = 0;
 int delay_ticks_after_vibration = 0;
@@ -92,7 +97,7 @@ int stationary_counter = 0;
 int gyro_enabled = 0; // Boolean
 int device_commands = 5; // Initialise to 0 for actual operation. Valid values 1, 3 or 5.
 int primary_continuous = 0; // Boolean value received from receivers. Volume etc: 1, channel etc: 0
-int ble_operation_in_progress = 0; //If 1, BLE connected and idle. 
+int ble_operation_in_progress = 0; //If 0, BLE connected and idle. 
 
 //////////////////
 ///IMU HANDLING///
@@ -109,7 +114,7 @@ void getXYZValues()
 	tx_buffer[3] = 0x2B00 | 0x8000;
 	tx_buffer[4] = 0x2C00 | 0x8000;
 	tx_buffer[5] = 0x2D00 | 0x8000;
-	spi_sw_master_send_bytes(tx_buffer, rx_buffer, 6, 0);
+	spi_sw_master_send_bytes(tx_buffer, rx_buffer, 6);
 
 	acc.x[0] = acc.x[1];
 	acc.y[0] = acc.y[1];
@@ -143,7 +148,7 @@ void getGyroValues()
 
 	tx_buffer[0] = 0x2400 | 0x8000;
 	tx_buffer[1] = 0x2500 | 0x8000;
-	spi_sw_master_send_bytes(tx_buffer, rx_buffer, 2, 0);
+	spi_sw_master_send_bytes(tx_buffer, rx_buffer, 2);
 
 	gyro.y[0] = gyro.y[1];
 	gyro_temp.y[0] = (rx_buffer[0] + rx_buffer[1] * 0x0100);
@@ -158,7 +163,7 @@ void gyroEnable()
 
 	tx_buffer2[0] = 0x1100 | 0x40; // CTRL2_G: Set gyro 104 Hz, 245 dps full scale.
 	tx_buffer2[1] = 0x0000;
-	spi_sw_master_send_bytes(tx2, NULL, 2, 0);
+	spi_sw_master_send_bytes(tx2, NULL, 2);
 	gyro_enabled = 1;
 }
 
@@ -169,7 +174,7 @@ void gyroDisable()
 
 	tx_buffer2[0] = 0x1100 | 0x00; // CTRL2_G: Set gyro power down.
 	tx_buffer2[1] = 0x0000;
-	spi_sw_master_send_bytes(tx2, NULL, 2, 0);
+	spi_sw_master_send_bytes(tx2, NULL, 2);
 	gyro_enabled = 0;
 }
 
@@ -240,13 +245,13 @@ void gestureControl()
 
 void endGestureControl()
 {
-	gyroDisable();
+	if (gyro_enabled)
+		gyroDisable();
 	buzz_buzz_state = 0;
 	delay_ticks = 0;
 	delay_ticks_after_vibration = 0;
 	orientation = -1; 
 	stationary_counter = 0;
-	gyro_enabled = 0;
 	//Stop reading more values (stop timer?)
 	//disconnect ble
 }
@@ -290,31 +295,26 @@ void getStartingState()
 			{ //tarkistetaan onko ranneke neutraaliasennossa
 				orientation = 0;
 				current_motion_sensor_state = RECEIVER_SELECTION;
-				break;
 			} 
 			else if (armIsUp()) 
 			{   //käden nosto
 				current_motion_sensor_state = RECEIVER_SELECTION;
 				orientation = 1;
-				break;
 			} 
 			else if (armRotation() == -1) 
 			{   //pronaatio
 				current_motion_sensor_state = RECEIVER_SELECTION;
 				orientation = 2;
-				break;
 			} 
 			else if (armRotation() == 1) 
 			{   //supinaatio
 				orientation = 3;
 				current_motion_sensor_state = RECEIVER_SELECTION;
-				break;
 			} 
 			else if (armIsDown()) 
 			{   //käden lasku
 				orientation = 4;
 				current_motion_sensor_state = RECEIVER_SELECTION; //This is normally shutdown
-				break;
 			}
 		}	
 	}
@@ -325,10 +325,10 @@ void selectReceiver()
 		getXYZValues();
 		if (!ble_operation_in_progress) //Don't do anything if we are in the middle of doing something with the ble connections
 		{
-			if (double_tap_received)  // Double tap. Only if not controlling a receiver. Interrupt lasts for 120 ms so should be readable without latching.
+			if (0)//double_tap_received)  // Double tap. Only if not controlling a receiver. Interrupt lasts for 120 ms so should be readable without latching.
 			{
-				double_tap_received = 0;
-				changeRoom(); //Pseudocode
+				//double_tap_received = 0;
+				//changeRoom(); //Pseudocode
 				//New ble connection
 				//No buzz?
 			}
@@ -346,7 +346,7 @@ void selectReceiver()
 				} 
 				else if (orientation != 1 && orientation != 2 && (armRotation() == -1)) 
 				{   // ccw 
-					previousReceiver(); //pseudocode
+					//previousReceiver(); //pseudocode
 					if (verbose_vibrations) 
 					{
 						VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_SELECTION,VIBRATION_MODE_NORMAL,30);
@@ -354,7 +354,7 @@ void selectReceiver()
 				}
 				else if (orientation != 1 && orientation != 3 && (armRotation() == 1)) 
 				{   // cw
-					nextReceiver(); //pseudocode
+					//nextReceiver(); //pseudocode
 					if (verbose_vibrations) 
 					{
 						VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_SELECTION,VIBRATION_MODE_NORMAL,30);
@@ -388,7 +388,7 @@ void controlReceiver()
 	
 	if (device_commands == 1) //Select also activates the only function and shuts the device down
 	{
-		sendToggle(); //pseudocode
+		//sendToggle(); //pseudocode
 		VIBRATION_WITH_STATE_CHANGE(looong_vibe_ticks,SHUTDOWN_STATE,VIBRATION_MODE_NORMAL,0);
 	}
 	else
@@ -404,7 +404,7 @@ void controlReceiver()
 				} 
 				else if (orientation != 1 && armIsUp()) 
 				{   // forearm up
-					sendToggle(); //pseudoCode
+					//sendToggle(); //pseudoCode
 					orientation = 1;
 					if (verbose_vibrations) 
 					{
@@ -418,11 +418,11 @@ void controlReceiver()
 						orientation = 2;
 						if ((three_command_mode || (device_commands == 3)) && !primary_continuous) 
 						{
-							sendPrevious(); //pseudoCode
+							//sendPrevious(); //pseudoCode
 						} 
 						else 
 						{
-							sendDecrease(); //pseudoCode
+							//sendDecrease(); //pseudoCode
 						}					
 						if (verbose_vibrations) 
 						{
@@ -437,11 +437,11 @@ void controlReceiver()
 						orientation = 3;
 						if ((three_command_mode || (device_commands == 3)) && !primary_continuous) 
 						{
-							sendNext();
+							//sendNext();
 						} 
 						else 
 						{
-							sendIncrease();
+							//sendIncrease();
 						}
 
 						if (verbose_vibrations) 
@@ -461,7 +461,7 @@ void controlReceiver()
 				getGyroValues();
 				if (swipeLeft()) 
 				{
-					sendNext(); //pseudoCode
+					//sendNext(); //pseudoCode
 					if (verbose_vibrations) 
 					{
 						VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_CONTROL,VIBRATION_MODE_NORMAL,70);
@@ -472,7 +472,7 @@ void controlReceiver()
 				} 
 				else if (swipeRight()) 
 				{
-					sendPrevious(); //pseudoCode
+					//sendPrevious(); //pseudoCode
 					if (verbose_vibrations) 
 					{
 						VIBRATION_WITH_STATE_CHANGE(short_vibe_ticks,RECEIVER_CONTROL,VIBRATION_MODE_NORMAL,70);
