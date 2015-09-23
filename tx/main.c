@@ -49,7 +49,7 @@ static uint16_t m_conn_handle;
 #define APP_TIMER_MAX_TIMERS	6
 #define APP_TIMER_QUEUE_SIZE	10
 
-#define POLLING_INTERVAL APP_TIMER_TICKS(500, APP_TIMER_PRESCALER)
+#define POLLING_INTERVAL APP_TIMER_TICKS(10, APP_TIMER_PRESCALER)
 
 static app_timer_id_t m_polling_timer;
 
@@ -135,7 +135,7 @@ static void getXYZValues()
 {
 	uint16_t tx_buffer[6];
 	uint8_t rx_buffer[6];
-	accel_t acc_temp;
+	int16_t tmpx, tmpy, tmpz;
 
 	tx_buffer[0] = 0x2800 | 0x8000;
 	tx_buffer[1] = 0x2900 | 0x8000;
@@ -149,14 +149,15 @@ static void getXYZValues()
 	acc.x[0] = acc.x[1];
 	acc.y[0] = acc.y[1];
 	acc.z[0] = acc.z[1];
-	acc_temp.x[0] = (rx_buffer[0] + rx_buffer[1] * 0x0100);
-	acc_temp.y[0] = (rx_buffer[2] + rx_buffer[3] * 0x0100);
-	acc_temp.z[0] = (rx_buffer[4] + rx_buffer[5] * 0x0100);
+
+	tmpx = (rx_buffer[0] | (rx_buffer[1] << 8));
+	tmpy = (rx_buffer[2] | (rx_buffer[3] << 8));
+	tmpz = (rx_buffer[4] | (rx_buffer[5] << 8));
 
 	// Normitus s.e. g = 1 ja poistetaan datasta nollat
-	acc.x[1] = -acc_temp.x[0] / (double) 0x2000 + 0.00001; // +x = kyynärpäätä kohti
-	acc.y[1] = acc_temp.y[0] / (double) 0x2000 + 0.00001; //
-	acc.z[1] = -acc_temp.z[0] / (double) 0x2000 + 0.00001; // +z = kämmentä kohti
+	acc.x[1] = -tmpx / (double) 0x2000 + 0.00001; // +x = kyynärpäätä kohti
+	acc.y[1] =  tmpy / (double) 0x2000 + 0.00001; //
+	acc.z[1] = -tmpz / (double) 0x2000 + 0.00001; // +z = kämmentä kohti
 	dx = calcDx();
 	dy = calcDy();
 	dz = calcDz();
@@ -176,24 +177,15 @@ static int armIsDown()
 	return (theta < theta_low);
 }
 
-static char buf[128];
-
 static void polling_timer_handler(void *p_context)
 {
 	getXYZValues();
-	{
-		sprintf(buf, "Got XYZ values: x = %g, y = %g, z = %g\r\n", acc.x[1], acc.y[1], acc.z[1]);
-		simple_uart_putstring((const uint8_t *)buf);
-
-		sprintf(buf, "Got angle values: phi = %g, theta = %g\r\n", phi, theta);
-		simple_uart_putstring((const uint8_t *)buf);
-	}
 
 	if (armIsUp())
-		simple_uart_putstring((const uint8_t *)"Arm is up\r\n");
+		simple_uart_putstring((const uint8_t *)"Up\r\n");
 
 	if (armIsDown())
-		simple_uart_putstring((const uint8_t *)"Arm is down\r\n");
+		simple_uart_putstring((const uint8_t *)"Down\r\n");
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
