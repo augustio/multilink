@@ -70,12 +70,6 @@ typedef struct accel {
 
 static accel_t acc, gyro;
 
-static double calcDx()
-{
-	double dxv = acc.x[n] - acc.x[n - 1];
-	return dxv;
-}
-
 static double dx;
 static double dy;
 static double dz;
@@ -101,6 +95,12 @@ static const double phi_ccw = -40.0; // degree
 static const double yaw_activate = 200.0; // degree per second
 
 static bool gyro_enabled = false;
+
+static double calcDx()
+{
+	double dxv = acc.x[n] - acc.x[n - 1];
+	return dxv;
+}
 
 //delta y from last value
 static double calcDy()
