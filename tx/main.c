@@ -169,12 +169,7 @@ static void polling_timer_handler(void *p_context)
 {
 	getXYZValues();
 	{
-		char buf_x[16], buf_y[16], buf_z[16];
-		sprintf(buf_x, "%.3f", acc.x[1]);
-		sprintf(buf_y, "%.3f", acc.y[1]);
-		sprintf(buf_z, "%.3f", acc.z[1]);
-		sprintf(buf, "Got XYZ values: x = %s, y = %s, z = %s\r\n", buf_x, buf_y, buf_z);
-
+		sprintf(buf, "Got XYZ values: x = %g, y = %g, z = %g\r\n", acc.x[1], acc.y[1], acc.z[1]);
 		simple_uart_putstring((const uint8_t *)buf);
 	}
 }

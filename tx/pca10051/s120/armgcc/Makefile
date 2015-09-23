@@ -105,6 +105,7 @@ CFLAGS += -fno-builtin --short-enums
 LDFLAGS += -Xlinker -Map=$(LISTING_DIRECTORY)/$(OUTPUT_FILENAME).map
 LDFLAGS += -mthumb -mabi=aapcs -L $(TEMPLATE_PATH) -T$(LINKER_SCRIPT)
 LDFLAGS += -mcpu=cortex-m0
+LDFLAGS += -u _printf_float
 # let linker to dump unused sections
 LDFLAGS += -Wl,--gc-sections
 # use newlib in nano version
