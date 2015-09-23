@@ -104,14 +104,12 @@ static double calcDx()
 	return dxv;
 }
 
-//delta y from last value
 static double calcDy()
 {
 	double dyv = acc.y[n] - acc.y[n - 1];
 	return dyv;
 }
 
-//delta z from last value
 static double calcDz()
 {
 	double dzv = acc.z[n] - acc.z[n - 1];
