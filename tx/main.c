@@ -84,6 +84,9 @@ static double dg;
 static double theta; // Deviation from horizontal in degrees (-90,90). Up positive.
 static double phi; // Deviation from semipronation in degrees (-90,90). Clockwise positive.
 
+static double theta_high = 45.0; // degree
+static double theta_low = -60.0; // degree
+
 //delta y from last value
 static double calcDy()
 {
@@ -163,6 +166,16 @@ static void getXYZValues()
 	phi = calcPhi();
 }
 
+static int armIsUp()
+{
+	return (theta > theta_high);
+}
+
+static int armIsDown()
+{
+	return (theta < theta_low);
+}
+
 static char buf[128];
 
 static void polling_timer_handler(void *p_context)
@@ -171,7 +184,16 @@ static void polling_timer_handler(void *p_context)
 	{
 		sprintf(buf, "Got XYZ values: x = %g, y = %g, z = %g\r\n", acc.x[1], acc.y[1], acc.z[1]);
 		simple_uart_putstring((const uint8_t *)buf);
+
+		sprintf(buf, "Got angle values: phi = %g, theta = %g\r\n", phi, theta);
+		simple_uart_putstring((const uint8_t *)buf);
 	}
+
+	if (armIsUp())
+		simple_uart_putstring((const uint8_t *)"Arm is up\r\n");
+
+	if (armIsDown())
+		simple_uart_putstring((const uint8_t *)"Arm is down\r\n");
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
