@@ -38,7 +38,6 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 #source common to all targets
 C_SOURCE_FILES += \
 $(abspath ../../../../components/libraries/util/app_error.c) \
-$(abspath ../../../../components/libraries/gpiote/app_gpiote.c) \
 $(abspath ../../../../components/drivers_nrf/pstorage/pstorage.c) \
 $(abspath ../../../../components/libraries/timer/app_timer.c) \
 $(abspath ../../../main.c) \
@@ -60,7 +59,6 @@ INC_PATHS += -I$(abspath ../../../../components/ble/ble_services/ble_hrs_c)
 INC_PATHS += -I$(abspath ../../../../components/drivers_nrf/config)
 INC_PATHS += -I$(abspath ../../../bsp)
 INC_PATHS += -I$(abspath ../../../../components/libraries/fifo)
-INC_PATHS += -I$(abspath ../../../../components/libraries/gpiote)
 INC_PATHS += -I$(abspath ../../../../components/ble/ble_services/ble_bas_c)
 INC_PATHS += -I$(abspath ../../../../components/softdevice/s120/headers)
 INC_PATHS += -I$(abspath ../../../../components/libraries/util)
