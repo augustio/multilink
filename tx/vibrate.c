@@ -34,7 +34,7 @@ void do_vibrate(uint32_t duration, uint32_t post_duration, bool *in_vibration)
 		return;
 
 	ticks = APP_TIMER_TICKS(duration, APP_TIMER_PRESCALER);
-	err_code = app_timer_start(m_vibro_timer, ticks, NULL);
+	err_code = app_timer_start(m_vibro_timer, ticks, (void *)in_vibration);
 	if (err_code != NRF_SUCCESS) {
 		return;
 	}
