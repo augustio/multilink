@@ -277,7 +277,9 @@ static void polling_timer_handler(void *p_context)
 				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 		APP_ERROR_CHECK(err_code);
 
-		do_vibrate(VIBRATE_DURATION_EXTRA_LONG, VIBRATE_DURATION_ZERO, &vibrating);
+		do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
+				VIBRATE_DURATION_EXTRA_SHORT,
+				&vibrating);
 	}
 
 	if (armIsUp())
