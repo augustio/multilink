@@ -276,8 +276,10 @@ static void polling_timer_handler(void *p_context)
 	if (armIsUp())
 		simple_uart_putstring((const uint8_t *)"Up\r\n");
 
+#if 0
 	if (armIsNeutral())
 		simple_uart_putstring((const uint8_t *)"Neutral\r\n");
+#endif
 
 	if (swipeRight())
 		simple_uart_putstring((const uint8_t *)"SRight\r\n");
