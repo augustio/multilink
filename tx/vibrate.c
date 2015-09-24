@@ -34,7 +34,7 @@ static void vibro_timer_handler(void *p_context)
 	nrf_gpio_pin_clear(VIBRATOR_PIN);
 
 	ticks = APP_TIMER_TICKS(ctx->post_duration, APP_TIMER_PRESCALER);
-	err_code = app_timer_start(m_post_vibro_timer, ticks, (void *)&ctx);
+	err_code = app_timer_start(m_post_vibro_timer, ticks, (void *)ctx);
 	if (err_code != NRF_SUCCESS) {
 		vibrating = false;
 		*(ctx->in_vibration) = false;
