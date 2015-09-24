@@ -41,6 +41,7 @@ $(abspath ../../../../components/libraries/util/app_error.c) \
 $(abspath ../../../../components/drivers_nrf/pstorage/pstorage.c) \
 $(abspath ../../../../components/libraries/timer/app_timer.c) \
 $(abspath ../../../main.c) \
+$(abspath ../../../vibrate.c) \
 $(abspath ../../../sw_spi.c) \
 $(abspath ../../../simple_uart.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \

@@ -8,9 +8,11 @@
 #include "app_timer.h"
 #include "simple_uart.h"
 #include "softdevice_handler.h"
-#include "sw_spi.h"
 #include "device_manager.h"
 #include "pstorage.h"
+
+#include "sw_spi.h"
+#include "vibrate.h"
 
 #define SCAN_INTERVAL 0x00A0  /**< Determines scan interval in units of 0.625 millisecond. */
 #define SCAN_WINDOW   0x0050  /**< Determines scan window in units of 0.625 millisecond. */
@@ -65,11 +67,6 @@ typedef struct
 #define SAVED_ACCELERATION_BUFFER_SIZE (2)
 #define n (SAVED_ACCELERATION_BUFFER_SIZE - 1)
 
-#define VIBRATE_DURATION_ZERO 0
-#define VIBRATE_DURATION_SHORT 150
-#define VIBRATE_DURATION_LONG 200
-#define VIBRATE_DURATION_EXTRA_LONG 240
-
 typedef struct accel {
 	double x[SAVED_ACCELERATION_BUFFER_SIZE];
 	double y[SAVED_ACCELERATION_BUFFER_SIZE];
@@ -101,10 +98,6 @@ static const double theta_limit_low = -45.0; // degree, below this blocks phi re
 static const double phi_cw = 40.0; // degree
 static const double phi_ccw = -40.0; // degree
 static const double yaw_activate = 200.0; // degree per second
-
-static void do_vibrate(uint32_t duration, uint32_t post_duration, bool *in_vibration)
-{
-}
 
 static double calcDx()
 {
@@ -674,6 +667,7 @@ int main(void)
 	spi_register_conf();
 	timers_init();
 	timers_create();
+	vibrate_init();
 	gpio_init();
 
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
@@ -697,6 +691,9 @@ void GPIOTE_IRQHandler(void)
 	{
 		NRF_GPIOTE->EVENTS_PORT = 0;
 		simple_uart_putstring((const uint8_t *)"IRQ handler\r\n");
+
+		if (vibrating)
+			return;
 
 		if (in_connection)
 			return;
