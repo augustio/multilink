@@ -19,15 +19,26 @@ typedef struct {
 
 static void post_vibro_timer_handler(void *p_context)
 {
+	vibro_ctx_t *ctx = (vibro_ctx_t *)p_context;
+
+	vibrating = false;
+	*(ctx->in_vibration) = false;
 }
 
 static void vibro_timer_handler(void *p_context)
 {
+	uint32_t ticks;
+	uint32_t err_code;
 	vibro_ctx_t *ctx = (vibro_ctx_t *)p_context;
 
 	nrf_gpio_pin_clear(VIBRATOR_PIN);
-	vibrating = false;
-	*(ctx->in_vibration) = false;
+
+	ticks = APP_TIMER_TICKS(ctx->post_duration, APP_TIMER_PRESCALER);
+	err_code = app_timer_start(m_post_vibro_timer, ticks, (void *)&ctx);
+	if (err_code != NRF_SUCCESS) {
+		vibrating = false;
+		*(ctx->in_vibration) = false;
+	}
 }
 
 void do_vibrate(uint32_t duration, uint32_t post_duration, bool *in_vibration)
