@@ -42,16 +42,16 @@ static const ble_gap_conn_params_t m_connection_param =
 static bool start_scan = false;
 static bool scanning = false;
 static bool in_connection = false;
+static bool gyro_enabled = false;
+static bool exiting_connection = false;
 
 static uint16_t m_conn_handle;
-
-static int cnt;
 
 #define APP_TIMER_PRESCALER	0
 #define APP_TIMER_MAX_TIMERS	6
 #define APP_TIMER_QUEUE_SIZE	10
 
-#define POLLING_INTERVAL APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)
+#define POLLING_INTERVAL APP_TIMER_TICKS(10, APP_TIMER_PRESCALER)
 
 static app_timer_id_t m_polling_timer;
 
@@ -95,8 +95,6 @@ static const double theta_limit_low = -45.0; // degree, below this blocks phi re
 static const double phi_cw = 40.0; // degree
 static const double phi_ccw = -40.0; // degree
 static const double yaw_activate = 200.0; // degree per second
-
-static bool gyro_enabled = false;
 
 static double calcDx()
 {
@@ -254,28 +252,25 @@ static void getGyroValues()
 
 static void polling_timer_handler(void *p_context)
 {
-#if 1
-	if (cnt++ == 10) {
-		uint32_t err_code;
-		err_code = sd_ble_gap_disconnect(m_conn_handle,
-				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-		APP_ERROR_CHECK(err_code);
-
-			simple_uart_putstring((const uint8_t *)"Termintating connection...\r\n");
-	}
-#else
 	int rot;
+
+	if (exiting_connection)
+		return;
 
 	getXYZValues();
 	getGyroValues();
 
 	if (armIsDown()) {
 		uint32_t err_code;
+
+		simple_uart_putstring((const uint8_t *)"Down\r\n");
+
+		exiting_connection = true;
+
 		err_code = sd_ble_gap_disconnect(m_conn_handle,
 				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 		APP_ERROR_CHECK(err_code);
 
-		simple_uart_putstring((const uint8_t *)"Down\r\n");
 	}
 
 	if (armIsUp())
@@ -295,7 +290,6 @@ static void polling_timer_handler(void *p_context)
 		sprintf(buf, "rot = %d\r\n", rot);
 		simple_uart_putstring((const uint8_t *)buf);
 	}
-#endif
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
@@ -554,9 +548,10 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		simple_uart_putstring((const uint8_t *)"Connected to ");
 		simple_uart_putstring((const uint8_t *)buf);
 
+		exiting_connection = false;
 		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
 
-		//gyroEnable();
+		gyroEnable();
 
 		err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
 		APP_ERROR_CHECK(err_code);
@@ -568,7 +563,7 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		err_code = app_timer_stop(m_polling_timer);
 		APP_ERROR_CHECK(err_code);
 
-		//gyroDisable();
+		gyroDisable();
 
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
 		in_connection = false;
