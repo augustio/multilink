@@ -250,7 +250,10 @@ static void getGyroValues()
 	tmp = (rx_buffer[0] | (rx_buffer[1] << 8));
 
 	gyro.y[1] = -tmp / 114.28 + 0.001; // Yaw in degrees per second
-	yaw = calcYaw(); // If !gyro_enabled: yaw = 0
+	if (!gyro_enabled)
+		yaw = 0.0;
+	else
+		yaw = calcYaw();
 }
 
 static void polling_timer_handler(void *p_context)
