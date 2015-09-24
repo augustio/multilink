@@ -6,6 +6,7 @@
 
 #include "ble_hci.h"
 #include "app_timer.h"
+#include "app_gpiote.h"
 #include "simple_uart.h"
 #include "softdevice_handler.h"
 #include "device_manager.h"
@@ -14,6 +15,8 @@
 #include "sw_spi.h"
 #include "vibrate.h"
 #include "gesture.h"
+
+#define APP_GPIOTE_MAX_USERS 2
 
 #define SCAN_INTERVAL 0x00A0  /**< Determines scan interval in units of 0.625 millisecond. */
 #define SCAN_WINDOW   0x0050  /**< Determines scan window in units of 0.625 millisecond. */
@@ -58,6 +61,7 @@ static uint16_t m_conn_handle;
 #define POLLING_INTERVAL APP_TIMER_TICKS(10, APP_TIMER_PRESCALER)
 
 static app_timer_id_t m_polling_timer;
+static app_gpiote_user_id_t m_gpiote_user_id;
 
 typedef struct
 {
@@ -324,11 +328,35 @@ static void spi_register_conf(void)
 	spi_sw_master_send_bytes(tx, rx, buf_len);
 }
 
-static void gpio_init(void)
+static void gpiote_init(void)
 {
-	nrf_gpio_cfg_sense_input(9, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_HIGH);
-	NRF_GPIOTE->INTENSET = GPIOTE_INTENSET_PORT_Msk;
-	NVIC_EnableIRQ(GPIOTE_IRQn);
+	APP_GPIOTE_INIT(APP_GPIOTE_MAX_USERS);
+}
+
+static void gpiote_event_handler(uint32_t lth, uint32_t htl)
+{
+	if (lth)
+		simple_uart_putstring((const uint8_t *)"LTH\r\n");
+
+	if (htl)
+		simple_uart_putstring((const uint8_t *)"HTL\r\n");
+}
+
+static void gpiote_start(void)
+{
+	uint32_t err_code;
+	err_code = app_gpiote_user_register(&m_gpiote_user_id,
+						1 << 9,
+						1 << 9,
+						gpiote_event_handler);
+	if (err_code != NRF_SUCCESS) {
+		simple_uart_putstring((const uint8_t *)"Could not register with GPIOTE\r\n");
+	}
+
+	err_code = app_gpiote_user_enable(m_gpiote_user_id);
+	if (err_code != NRF_SUCCESS) {
+		simple_uart_putstring((const uint8_t *)"Could not enable GPIOTE\r\n");
+	}
 }
 
 static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
@@ -460,7 +488,8 @@ int main(void)
 	timers_init();
 	timers_create();
 	vibrate_init();
-	gpio_init();
+	gpiote_init();
+	gpiote_start();
 
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
@@ -477,6 +506,7 @@ int main(void)
 	return 0;
 }
 
+#if 0
 void GPIOTE_IRQHandler(void)
 {
 	if (NRF_GPIOTE->EVENTS_PORT)
@@ -494,3 +524,5 @@ void GPIOTE_IRQHandler(void)
 			start_scan = true;
 	}
 }
+#endif
+
