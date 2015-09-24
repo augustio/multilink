@@ -9,7 +9,7 @@ static bool gyro_enabled = false;
 static accel_t gyro;
 static accel_t acc;
 
-double yaw = 0.0;
+static double yaw = 0.0;
 static const double yaw_activate = 200.0; // degree per second
 
 static double dx;
