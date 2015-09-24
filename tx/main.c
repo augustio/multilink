@@ -51,8 +51,8 @@ static bool vibrating = false;
 static uint16_t m_conn_handle;
 
 #define APP_TIMER_PRESCALER	0
-#define APP_TIMER_MAX_TIMERS	6
-#define APP_TIMER_QUEUE_SIZE	10
+#define APP_TIMER_MAX_TIMERS	8
+#define APP_TIMER_QUEUE_SIZE	12
 
 #define POLLING_INTERVAL APP_TIMER_TICKS(10, APP_TIMER_PRESCALER)
 
