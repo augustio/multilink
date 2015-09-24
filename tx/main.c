@@ -44,6 +44,7 @@ static bool scanning = false;
 static bool in_connection = false;
 static bool gyro_enabled = false;
 static bool exiting_connection = false;
+static bool vibrating = false;
 
 static uint16_t m_conn_handle;
 
@@ -63,6 +64,11 @@ typedef struct
 
 #define SAVED_ACCELERATION_BUFFER_SIZE (2)
 #define n (SAVED_ACCELERATION_BUFFER_SIZE - 1)
+
+#define VIBRATE_DURATION_ZERO 0
+#define VIBRATE_DURATION_SHORT 150
+#define VIBRATE_DURATION_LONG 200
+#define VIBRATE_DURATION_EXTRA_LONG 240
 
 typedef struct accel {
 	double x[SAVED_ACCELERATION_BUFFER_SIZE];
@@ -95,6 +101,10 @@ static const double theta_limit_low = -45.0; // degree, below this blocks phi re
 static const double phi_cw = 40.0; // degree
 static const double phi_ccw = -40.0; // degree
 static const double yaw_activate = 200.0; // degree per second
+
+static void do_vibrate(uint32_t duration, uint32_t post_duration, bool *in_vibration)
+{
+}
 
 static double calcDx()
 {
@@ -257,6 +267,9 @@ static void polling_timer_handler(void *p_context)
 	if (exiting_connection)
 		return;
 
+	if (vibrating)
+		return;
+
 	getXYZValues();
 	getGyroValues();
 
@@ -271,6 +284,7 @@ static void polling_timer_handler(void *p_context)
 				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 		APP_ERROR_CHECK(err_code);
 
+		do_vibrate(VIBRATE_DURATION_EXTRA_LONG, VIBRATE_DURATION_ZERO, &vibrating);
 	}
 
 	if (armIsUp())
