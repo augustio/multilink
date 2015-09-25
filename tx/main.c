@@ -558,11 +558,6 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		exiting_connection = false;
 		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
 
-		gyroEnable();
-
-		err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
-		APP_ERROR_CHECK(err_code);
-		
 		// Discover peer's services.
 		err_code = ble_db_discovery_start(&m_ble_db_discovery,
 				p_event->event_param.p_gap_param->conn_handle);
@@ -663,6 +658,8 @@ static void timers_create()
 
 static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 {
+	uint32_t err_code;
+
 	if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE) {
 		int i;
 		for (i = 0; i < p_evt->params.discovered_db.char_count; i++) {
@@ -674,6 +671,11 @@ static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 					(p_characteristic->characteristic.uuid.type == m_base_uuid_type)) {
 				// Characteristic found. Store the information needed and break.
 				simple_uart_putstring((const uint8_t *)"FOUND THE TARGET CHARACTERISTIC\r\n");
+
+				gyroEnable();
+
+				err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
+				APP_ERROR_CHECK(err_code);
 			}
 		}
 		simple_uart_putstring((const uint8_t *)"DISCOVERY COMPLETE\r\n");
