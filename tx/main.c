@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "ble_hci.h"
+#include "ble_db_discovery.h"
 #include "app_timer.h"
 #include "app_gpiote.h"
 #include "simple_uart.h"
@@ -34,6 +35,12 @@
 
 #define TARGET_DEVICE_NAME "Electria_receiver"
 
+#define MULTILINK_PERIPHERAL_BASE_UUID     {{0xB3, 0x58, 0x55, 0x40, 0x50, 0x60, 0x11, \
+						0xe3, 0x8f, 0x96, 0x08, 0x00, 0x00, 0x00,   \
+						0x9a, 0x66}}
+
+#define MULTILINK_PERIPHERAL_SERVICE_UUID  0x9001
+
 static ble_gap_scan_params_t m_scan_param; /**< Scan parameters requested for scanning and connection. */
 
 static dm_application_instance_t    m_dm_app_id;
@@ -44,6 +51,8 @@ static const ble_gap_conn_params_t m_connection_param =
 	0,                                   // Slave latency
 	(uint16_t)SUPERVISION_TIMEOUT        // Supervision time-out
 };
+
+static uint8_t   m_base_uuid_type;
 
 static bool start_scan = false;
 static bool scanning = false;
@@ -361,9 +370,28 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	}
 }
 
+void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
+{
+	switch (p_ble_evt->header.evt_id) {
+	case BLE_GATTC_EVT_WRITE_RSP:
+	
+	break;
+
+	case BLE_GATTC_EVT_HVX:
+	break;
+
+	case BLE_GATTC_EVT_TIMEOUT:
+	break;
+
+	default:
+	break;
+	}
+}
+
 static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
 {
 	dm_ble_evt_handler(p_ble_evt);
+	client_handling_ble_evt_handler(p_ble_evt);
 	on_ble_evt(p_ble_evt);
 }
 
@@ -622,12 +650,38 @@ static void timers_create()
 	APP_ERROR_CHECK(err_code);
 }
 
+static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
+{
+}
+
+static void service_init()
+{
+	uint32_t err_code;
+	ble_uuid128_t base_uuid = MULTILINK_PERIPHERAL_BASE_UUID;
+	ble_uuid_t uuid;
+
+	err_code = ble_db_discovery_init();
+	APP_ERROR_CHECK(err_code);
+
+	err_code = sd_ble_uuid_vs_add(&base_uuid, &m_base_uuid_type);
+	APP_ERROR_CHECK(err_code);
+
+	uuid.type = m_base_uuid_type;
+	uuid.uuid = MULTILINK_PERIPHERAL_SERVICE_UUID;
+
+	err_code = ble_db_discovery_evt_register(&uuid,
+			db_discovery_evt_handler);
+	APP_ERROR_CHECK(err_code);
+}
+
 int main(void)
 {
 	simple_uart_config(11, 12, 11, 11, false);
 
 	ble_stack_init();
 	device_manager_init(true);
+
+	service_init();
 
 	spi_sw_master_init();
 	spi_register_conf();

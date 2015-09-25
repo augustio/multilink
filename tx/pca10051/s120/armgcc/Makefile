@@ -38,6 +38,7 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 #source common to all targets
 C_SOURCE_FILES += \
 $(abspath ../../../../components/libraries/util/app_error.c) \
+$(abspath ../../../../components/ble/ble_db_discovery/ble_db_discovery.c) \
 $(abspath ../../../../components/libraries/gpiote/app_gpiote.c) \
 $(abspath ../../../../components/drivers_nrf/pstorage/pstorage.c) \
 $(abspath ../../../../components/libraries/timer/app_timer.c) \
