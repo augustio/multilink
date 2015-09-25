@@ -656,9 +656,35 @@ static void timers_create()
 	APP_ERROR_CHECK(err_code);
 }
 
+static void notif_enable(int index)
+{
+	uint32_t                 err_code;
+	ble_gattc_write_params_t write_params;
+	uint8_t                  buf[BLE_CCCD_VALUE_LEN];
+
+	buf[0] = BLE_GATT_HVX_NOTIFICATION;
+	buf[1] = 0;
+
+	write_params.write_op = BLE_GATT_OP_WRITE_REQ;
+	write_params.handle   = m_ble_db_discovery.services[0].charateristics[index].cccd_handle;
+	write_params.offset   = 0;
+	write_params.len      = sizeof(buf);
+	write_params.p_value  = buf;
+
+	err_code = sd_ble_gattc_write(m_ble_db_discovery.conn_handle, &write_params);
+	if (err_code != NRF_SUCCESS)
+		simple_uart_putstring((const uint8_t *)"sd_ble_gattc_write() FAILED\r\n");
+	else
+		simple_uart_putstring((const uint8_t *)"NOTIFICATIONS ENABLED\r\n");
+
+	APP_ERROR_CHECK(err_code);
+}
+
 static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 {
 	uint32_t err_code;
+	int index;
+	bool target_characteristic_found = false;
 
 	if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE) {
 		int i;
@@ -676,11 +702,19 @@ static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 
 				err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
 				APP_ERROR_CHECK(err_code);
+
+				target_characteristic_found = true;
+				if (target_characteristic_found)
+					index = i;
 			}
 		}
 		simple_uart_putstring((const uint8_t *)"DISCOVERY COMPLETE\r\n");
 	} else {
 		simple_uart_putstring((const uint8_t *)"DISCOVERY FAILED\r\n");
+	}
+
+	if (target_characteristic_found) {
+		notif_enable(index);
 	}
 }
 
