@@ -40,6 +40,7 @@
 						0x9a, 0x66}}
 
 #define MULTILINK_PERIPHERAL_SERVICE_UUID  0x9001
+#define MULTILINK_PERIPHERAL_CHAR_UUID     0x900A
 
 static ble_gap_scan_params_t m_scan_param; /**< Scan parameters requested for scanning and connection. */
 
@@ -663,6 +664,18 @@ static void timers_create()
 static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 {
 	if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE) {
+		int i;
+		for (i = 0; i < p_evt->params.discovered_db.char_count; i++) {
+			ble_db_discovery_char_t *p_characteristic;
+			p_characteristic = &(p_evt->params.discovered_db.charateristics[i]);
+
+			if ((p_characteristic->characteristic.uuid.uuid == MULTILINK_PERIPHERAL_CHAR_UUID)
+					&&
+					(p_characteristic->characteristic.uuid.type == m_base_uuid_type)) {
+				// Characteristic found. Store the information needed and break.
+				simple_uart_putstring((const uint8_t *)"FOUND THE TARGET CHARACTERISTIC\r\n");
+			}
+		}
 		simple_uart_putstring((const uint8_t *)"DISCOVERY COMPLETE\r\n");
 	} else {
 		simple_uart_putstring((const uint8_t *)"DISCOVERY FAILED\r\n");
