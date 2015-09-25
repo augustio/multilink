@@ -32,6 +32,11 @@ static const double theta_limit_low = -45.0; // degree, below this blocks phi re
 static const double phi_cw = 40.0; // degree
 static const double phi_ccw = -40.0; // degree
 
+static const double dg_limit = 0.1;
+static const double g_limit = 0.2;
+static const int stationary_limit = 5; // How many data points arm needs to be relatively stationary before recognizing gestures. ~10ms/data point
+static int stationary_counter = 0;
+
 #define n (SAVED_ACCELERATION_BUFFER_SIZE - 1)
 
 static double calcYaw() 
@@ -77,7 +82,7 @@ void gyroEnable(void)
 	tx_buffer[0] = 0x1100 | 0x40; // CTRL2_G: Set gyro 104 Hz, 245 dps full scale.
 	tx_buffer[1] = 0x0000;
 	spi_sw_master_send_bytes(tx, NULL, 2);
-	gyro_enabled = 1;
+	gyro_enabled = true;
 }
 
 void gyroDisable(void)
@@ -88,7 +93,7 @@ void gyroDisable(void)
 	tx_buffer[0] = 0x1100 | 0x00; // CTRL2_G: Set gyro power down.
 	tx_buffer[1] = 0x0000;
 	spi_sw_master_send_bytes(tx, NULL, 2);
-	gyro_enabled = 0;
+	gyro_enabled = false;
 }
 
 int swipeRight(void)
@@ -115,6 +120,26 @@ int armIsNeutral(void)
 {
 	return (phi < phi_neutral_cw && phi > phi_neutral_ccw
 			&& theta < theta_neutral_high && theta > theta_neutral_low);
+}
+
+int armIsStationary(void) 
+{
+	if (dg < dg_limit && fabs(g - 1) < g_limit) {
+		stationary_counter++;
+		if (stationary_counter > stationary_limit) {
+			return 1;
+		} else {
+			return 0;
+		}
+	} else {
+		stationary_counter = 0;
+		return 0;
+	}
+}
+
+bool isGyroEnabled(void)
+{
+	return gyro_enabled;
 }
 
 int armRotation(void)

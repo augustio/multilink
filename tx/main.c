@@ -71,8 +71,127 @@ typedef struct
 	uint16_t data_len;
 } data_t;
 
+enum {
+	ACTION_NO_ACTION = -1,
+	ACTION_ARM_UP = 1,
+	ACTION_ROTATION_CCW,
+	ACTION_ROTATION_CW,
+	ACTION_ARM_DOWN,
+	ACTION_SWIPE_RIGHT,
+	ACTION_SWIPE_LEFT,
+};
+
+enum {
+	ORIENTATION_UNDEFINED = -1,
+	ORIENTATION_NEUTRAL = 0,
+	ORIENTATION_UP = 1,
+	ORIENTATION_CCW,
+	ORIENTATION_CW,
+	ORIENTATION_DOWN,
+};
+
+static int getAction(void)
+{
+	static int orientation = ORIENTATION_UNDEFINED;
+
+	getXYZValues();
+
+	if (armIsStationary())
+	{
+		if (armIsNeutral())
+		{
+			orientation = ORIENTATION_NEUTRAL;
+			return ACTION_NO_ACTION;
+		}
+		else if (orientation != ORIENTATION_UP && armIsUp())
+		{
+			orientation = ORIENTATION_UP;
+			return ACTION_ARM_UP;
+		}
+		else if (orientation != ORIENTATION_UP && (armRotation() == -1))
+		{
+			if (orientation != ORIENTATION_CCW)
+			{
+				orientation = ORIENTATION_CCW;
+				return ACTION_ROTATION_CCW;
+			}
+		}
+		else if (orientation != ORIENTATION_UP && (armRotation() == 1))
+		{
+			if (orientation != ORIENTATION_CW)
+			{
+				orientation = ORIENTATION_CW;
+				return ACTION_ROTATION_CW;
+			}
+		}
+		else if (orientation != ORIENTATION_DOWN && armIsDown())
+		{ 
+			orientation = ORIENTATION_DOWN;
+			return ACTION_ARM_DOWN;
+		}
+	}
+
+	// neutral orientation prerequisite for accepting swipes
+	if (isGyroEnabled() && orientation == ORIENTATION_NEUTRAL) {
+
+		getGyroValues();
+
+		if (swipeLeft())
+		{
+			return ACTION_SWIPE_LEFT;
+		}
+		else if (swipeRight())
+		{
+			return ACTION_SWIPE_RIGHT;
+		}
+	}
+
+	return ACTION_NO_ACTION;
+}
+
 static void polling_timer_handler(void *p_context)
 {
+#if 1
+	if (exiting_connection)
+		return;
+
+	if (vibrating)
+		return;
+
+	switch (getAction()) {
+	case ACTION_NO_ACTION:
+	break;
+
+	case ACTION_ARM_UP:
+		simple_uart_putstring((const uint8_t *)"UP\r\n");
+	break;
+
+	case ACTION_ROTATION_CCW:
+		simple_uart_putstring((const uint8_t *)"CCW\r\n");
+	break;
+
+	case ACTION_ROTATION_CW:
+		simple_uart_putstring((const uint8_t *)"CW\r\n");
+	break;
+
+	case ACTION_ARM_DOWN:
+		simple_uart_putstring((const uint8_t *)"Down\r\n");
+	break;
+
+	case ACTION_SWIPE_RIGHT:
+		simple_uart_putstring((const uint8_t *)"RIGHT\r\n");
+	break;
+
+	case ACTION_SWIPE_LEFT:
+		simple_uart_putstring((const uint8_t *)"LEFT\r\n");
+	break;
+
+	default:
+		simple_uart_putstring((const uint8_t *)"SHOULDN'T HAPPEN\r\n");
+	break;
+	}
+
+#else
 	int rot;
 
 	if (exiting_connection)
@@ -119,6 +238,7 @@ static void polling_timer_handler(void *p_context)
 		sprintf(buf, "rot = %d\r\n", rot);
 		simple_uart_putstring((const uint8_t *)buf);
 	}
+#endif
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
