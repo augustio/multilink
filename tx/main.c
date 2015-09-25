@@ -159,6 +159,9 @@ static void polling_timer_handler(void *p_context)
 		return;
 
 	switch (getAction()) {
+
+	uint32_t err_code;
+
 	case ACTION_NO_ACTION:
 	break;
 
@@ -175,7 +178,17 @@ static void polling_timer_handler(void *p_context)
 	break;
 
 	case ACTION_ARM_DOWN:
-		simple_uart_putstring((const uint8_t *)"Down\r\n");
+		exiting_connection = true;
+
+		err_code = sd_ble_gap_disconnect(m_conn_handle,
+				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+		APP_ERROR_CHECK(err_code);
+
+		do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
+				VIBRATE_DURATION_EXTRA_LONG,
+				&vibrating);
+
+		simple_uart_putstring((const uint8_t *)"DOWN\r\n");
 	break;
 
 	case ACTION_SWIPE_RIGHT:
