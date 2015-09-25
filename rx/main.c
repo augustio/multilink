@@ -66,6 +66,7 @@ static void advertising_start()
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	switch (p_ble_evt->header.evt_id) {
+	char buf[16];
 	case BLE_GAP_EVT_CONNECTED:
 		simple_uart_putstring((const uint8_t*) "Connected\r\n");
 		app_timer_stop(m_advblink_timer);
@@ -77,6 +78,13 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 		nrf_gpio_pin_clear(RX_GREEN_LED_PIN);
 		advertising_start();
 	break;
+
+	case BLE_GATTS_EVT_WRITE:
+
+	sprintf((char *)buf, "%d\r\n", p_ble_evt->evt.gatts_evt.params.write.data[0]);
+
+	simple_uart_putstring((const uint8_t *)"RX received data: ");
+	simple_uart_putstring((const uint8_t *)buf);
 
 	default:
 	break;
