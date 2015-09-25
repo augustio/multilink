@@ -74,6 +74,8 @@ static uint16_t m_conn_handle;
 static app_timer_id_t m_polling_timer;
 static app_gpiote_user_id_t m_gpiote_user_id;
 
+static ble_db_discovery_t m_ble_db_discovery;
+
 typedef struct
 {
 	uint8_t  *p_data;
@@ -391,6 +393,7 @@ void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
 static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
 {
 	dm_ble_evt_handler(p_ble_evt);
+	ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
 	client_handling_ble_evt_handler(p_ble_evt);
 	on_ble_evt(p_ble_evt);
 }
@@ -558,10 +561,17 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 		err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
 		APP_ERROR_CHECK(err_code);
+		
+		// Discover peer's services.
+		err_code = ble_db_discovery_start(&m_ble_db_discovery,
+				p_event->event_param.p_gap_param->conn_handle);
+		APP_ERROR_CHECK(err_code);
 	}
 	break;
 
 	case DM_EVT_DISCONNECTION:
+		memset(&m_ble_db_discovery, 0 , sizeof (m_ble_db_discovery));
+
 		simple_uart_putstring((const uint8_t *)"DM_EVENT_DISCONNECTION\r\n");
 		err_code = app_timer_stop(m_polling_timer);
 		APP_ERROR_CHECK(err_code);
@@ -652,6 +662,11 @@ static void timers_create()
 
 static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 {
+	if (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE) {
+		simple_uart_putstring((const uint8_t *)"DISCOVERY COMPLETE\r\n");
+	} else {
+		simple_uart_putstring((const uint8_t *)"DISCOVERY FAILED\r\n");
+	}
 }
 
 static void service_init()
