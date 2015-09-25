@@ -65,6 +65,12 @@ static void advertising_start()
 
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
+	{
+		char buf[32];
+		sprintf((char *)buf, "BLE EVENT WITH ID %d\r\n", p_ble_evt->header.evt_id);
+		simple_uart_putstring((const uint8_t *)buf);
+	}
+
 	switch (p_ble_evt->header.evt_id) {
 	char buf[16];
 	case BLE_GAP_EVT_CONNECTED:
