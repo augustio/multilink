@@ -60,6 +60,8 @@ static uint16_t m_conn_handle;
 
 #define POLLING_INTERVAL APP_TIMER_TICKS(10, APP_TIMER_PRESCALER)
 
+#define IMU_DOUBLE_TAP_PIN (9)
+
 static app_timer_id_t m_polling_timer;
 static app_gpiote_user_id_t m_gpiote_user_id;
 
@@ -94,7 +96,7 @@ static void polling_timer_handler(void *p_context)
 		APP_ERROR_CHECK(err_code);
 
 		do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
-				VIBRATE_DURATION_EXTRA_SHORT,
+				VIBRATE_DURATION_EXTRA_LONG,
 				&vibrating);
 	}
 
@@ -330,6 +332,7 @@ static void spi_register_conf(void)
 
 static void gpiote_init(void)
 {
+	nrf_gpio_cfg_input(IMU_DOUBLE_TAP_PIN, NRF_GPIO_PIN_PULLUP);
 	APP_GPIOTE_INIT(APP_GPIOTE_MAX_USERS);
 }
 
@@ -338,16 +341,26 @@ static void gpiote_event_handler(uint32_t lth, uint32_t htl)
 	if (lth)
 		simple_uart_putstring((const uint8_t *)"LTH\r\n");
 
-	if (htl)
+	if (htl) {
+		if (vibrating)
+			return;
+
+		if (in_connection)
+			return;
+
+		if (!scanning)
+			start_scan = true;
+
 		simple_uart_putstring((const uint8_t *)"HTL\r\n");
+	}
 }
 
 static void gpiote_start(void)
 {
 	uint32_t err_code;
 	err_code = app_gpiote_user_register(&m_gpiote_user_id,
-						1 << 9,
-						1 << 9,
+						0,
+						1 << IMU_DOUBLE_TAP_PIN,
 						gpiote_event_handler);
 	if (err_code != NRF_SUCCESS) {
 		simple_uart_putstring((const uint8_t *)"Could not register with GPIOTE\r\n");
