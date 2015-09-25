@@ -182,10 +182,13 @@ static void send_data(uint8_t data)
 
 	err_code = sd_ble_gattc_write(handle, &write_params);
 	APP_ERROR_CHECK(err_code);
-	if (err_code != NRF_SUCCESS)
-		simple_uart_putstring((const uint8_t *)"sd_ble_gattc_write() FAILED\r\n");
-	else
-		simple_uart_putstring((const uint8_t *)"DATA NOT SENT\r\n");
+	if (err_code != NRF_SUCCESS) {
+		char buf2[32];
+		sprintf(buf2, "DATA NOT SENT, REASON %d\r\n", (int)err_code);
+		simple_uart_putstring((const uint8_t *)buf2);
+	} else {
+		simple_uart_putstring((const uint8_t *)"sd_ble_gattc_write() SUCESSFUL\r\n");
+	}
 }
 
 static void polling_timer_handler(void *p_context)
