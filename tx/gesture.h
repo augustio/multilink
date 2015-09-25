@@ -13,6 +13,8 @@ int armIsUp(void);
 int armIsDown(void);
 int armIsNeutral(void);
 int armRotation(void);
+int armIsStationary(void);
+int gyroEnabled();
 
 #define SAVED_ACCELERATION_BUFFER_SIZE (2)
 
