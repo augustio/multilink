@@ -47,6 +47,12 @@ static bool scanning = false;
 static bool in_connection = false;
 static bool exiting_connection = false;
 
+static const bool verbose_vibrations = true;
+static const bool three_command_mode = false;
+static int device_commands = 5; //This is should be taken from the receiver adv
+static int orientation = -1;
+static bool primary_continuous = false;
+
 static bool vibrating = false;
 
 static uint16_t m_conn_handle;
@@ -65,54 +71,139 @@ typedef struct
 	uint16_t data_len;
 } data_t;
 
-static void polling_timer_handler(void *p_context)
+static void controlReceiver()
 {
-	int rot;
-
 	if (exiting_connection)
 		return;
 
 	if (vibrating)
 		return;
-
+	
 	getXYZValues();
-	getGyroValues();
 
-	if (armIsDown()) {
-		uint32_t err_code;
-
-		simple_uart_putstring((const uint8_t *)"Down\r\n");
-
-		exiting_connection = true;
-
-		err_code = sd_ble_gap_disconnect(m_conn_handle,
-				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-		APP_ERROR_CHECK(err_code);
-
-		do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
-				VIBRATE_DURATION_EXTRA_SHORT,
+	if (armIsStationary()) 
+	{
+		if (armIsNeutral())
+		{ //check if controller is neutral position
+			orientation = 0;
+		} 
+		else if (orientation != 1 && armIsUp()) 
+		{   // forearm up
+			//sendToggle(); //pseudoCode
+			orientation = 1;
+			simple_uart_putstring((const uint8_t *)"Up\r\n");
+			if (verbose_vibrations) 
+			{
+				do_vibrate(VIBRATE_DURATION_SHORT,
+				VIBRATE_PAUSE_DURATION_NORMAL,
 				&vibrating);
+			}			
+		} 
+		else if (orientation != 1 && (armRotation() == -1)) 
+		{   // ccw
+			if (orientation != 2) 
+			{
+				orientation = 2;
+				simple_uart_putstring((const uint8_t *)"CCW\r\n");
+				if ((three_command_mode || (device_commands == 3)) && !primary_continuous) 
+				{
+					//sendPrevious(); //pseudoCode
+				} 
+				else 
+				{
+					//sendDecrease(); //pseudoCode
+				}					
+				if (verbose_vibrations) 
+				{
+					do_vibrate(VIBRATE_DURATION_SHORT,
+					VIBRATE_PAUSE_DURATION_NORMAL,
+					&vibrating);
+				}	
+			}
+		} 
+		else if (orientation != 1 && (armRotation() == 1)) 
+		{   // cw
+			if (orientation != 3) 
+			{
+				orientation = 3;
+				simple_uart_putstring((const uint8_t *)"CW\r\n");
+				if ((three_command_mode || (device_commands == 3)) && !primary_continuous) 
+				{
+					//sendNext();
+				} 
+				else 
+				{
+					//sendIncrease();
+				}
+
+				if (verbose_vibrations) 
+				{
+					do_vibrate(VIBRATE_DURATION_SHORT,
+					VIBRATE_PAUSE_DURATION_NORMAL,
+					&vibrating);
+				}					
+			}
+		}
+		else if (orientation != 4 && armIsDown()) 
+		{   // forearm down, The End
+			orientation = 4;
+			uint32_t err_code;
+
+			simple_uart_putstring((const uint8_t *)"Down\r\n");
+
+			exiting_connection = true;
+
+			err_code = sd_ble_gap_disconnect(m_conn_handle,
+					BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+			APP_ERROR_CHECK(err_code);
+
+			do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
+					VIBRATE_PAUSE_DURATION_SHORT,
+					&vibrating);
+		}
 	}
-
-	if (armIsUp())
-		simple_uart_putstring((const uint8_t *)"Up\r\n");
-
-#if 0
-	if (armIsNeutral())
-		simple_uart_putstring((const uint8_t *)"Neutral\r\n");
-#endif
-
-	if (swipeRight())
-		simple_uart_putstring((const uint8_t *)"SRight\r\n");
-
-	if (swipeLeft())
-		simple_uart_putstring((const uint8_t *)"SLeft\r\n");
-
-	if ((rot = armRotation())) {
-		char buf[16];
-		sprintf(buf, "rot = %d\r\n", rot);
-		simple_uart_putstring((const uint8_t *)buf);
+	if (gyroEnabled() && orientation == 0) // neutral orientation prerequisite for accepting swipes
+	{ 
+		getGyroValues();
+		if (swipeLeft()) 
+		{
+			simple_uart_putstring((const uint8_t *)"SLeft\r\n");
+			//sendNext(); //pseudoCode
+			if (verbose_vibrations) 
+			{
+				do_vibrate(VIBRATE_DURATION_SHORT,
+					VIBRATE_PAUSE_DURATION_EXTRA_LONG,
+					&vibrating);
+			}
+			else
+			{
+				//compute_delay(700); // Long delay to prevent activation on backstroke
+			}
+			
+		} 
+		else if (swipeRight()) 
+		{
+			simple_uart_putstring((const uint8_t *)"SRight\r\n");
+			//sendPrevious(); //pseudoCode
+			if (verbose_vibrations) 
+			{
+				do_vibrate(VIBRATE_DURATION_SHORT,
+					VIBRATE_PAUSE_DURATION_EXTRA_LONG,
+					&vibrating);
+			}
+			else
+			{
+				//compute_delay(700); // Long delay to prevent activation on backstroke
+			}
+		}
 	}
+		
+}
+
+static void polling_timer_handler(void *p_context)
+{
+	//Here should be a switch between statemachines controlReceiver and selectReceiver(not ported yet)
+	controlReceiver();
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
@@ -352,8 +443,8 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		exiting_connection = false;
 		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
 
-		gyroEnable();
-
+		gyroEnable(); //Wrong place
+		orientation = -1;
 		err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
 		APP_ERROR_CHECK(err_code);
 	}
