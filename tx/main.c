@@ -161,6 +161,33 @@ static int getAction(void)
 	return ACTION_NO_ACTION;
 }
 
+static void send_data(uint8_t data)
+{
+	uint32_t err_code;
+	ble_gattc_write_params_t write_params;
+	uint8_t buf[2];
+
+	uint16_t handle = 0;
+
+	buf[0] = data;
+	buf[1] = 0;
+
+	simple_uart_putstring((const uint8_t *)"preparing to send\r\n");
+
+	write_params.write_op = BLE_GATT_OP_WRITE_CMD;
+	write_params.handle = 0xe;
+	write_params.offset = 0;
+	write_params.len = sizeof(buf);
+	write_params.p_value = buf;
+
+	err_code = sd_ble_gattc_write(handle, &write_params);
+	APP_ERROR_CHECK(err_code);
+	if (err_code != NRF_SUCCESS)
+		simple_uart_putstring((const uint8_t *)"sd_ble_gattc_write() FAILED\r\n");
+	else
+		simple_uart_putstring((const uint8_t *)"DATA NOT SENT\r\n");
+}
+
 static void polling_timer_handler(void *p_context)
 {
 #if 1
@@ -179,14 +206,17 @@ static void polling_timer_handler(void *p_context)
 
 	case ACTION_ARM_UP:
 		simple_uart_putstring((const uint8_t *)"UP\r\n");
+		send_data(ACTION_ARM_UP);
 	break;
 
 	case ACTION_ROTATION_CCW:
 		simple_uart_putstring((const uint8_t *)"CCW\r\n");
+		send_data(ACTION_ROTATION_CCW);
 	break;
 
 	case ACTION_ROTATION_CW:
 		simple_uart_putstring((const uint8_t *)"CW\r\n");
+		send_data(ACTION_ROTATION_CW);
 	break;
 
 	case ACTION_ARM_DOWN:
@@ -205,10 +235,12 @@ static void polling_timer_handler(void *p_context)
 
 	case ACTION_SWIPE_RIGHT:
 		simple_uart_putstring((const uint8_t *)"RIGHT\r\n");
+		send_data(ACTION_SWIPE_RIGHT);
 	break;
 
 	case ACTION_SWIPE_LEFT:
 		simple_uart_putstring((const uint8_t *)"LEFT\r\n");
+		send_data(ACTION_SWIPE_LEFT);
 	break;
 
 	default:
