@@ -61,6 +61,7 @@ static bool in_connection = false;
 static bool exiting_connection = false;
 
 static bool vibrating = false;
+static bool ble_write_in_progress = false;
 
 static uint16_t m_conn_handle;
 
@@ -163,6 +164,7 @@ static int getAction(void)
 
 static void send_data(uint8_t data)
 {
+	ble_write_in_progress = true;
 	uint32_t err_code;
 	ble_gattc_write_params_t write_params;
 	uint8_t buf[2];
@@ -186,7 +188,9 @@ static void send_data(uint8_t data)
 		char buf2[32];
 		sprintf(buf2, "DATA NOT SENT, REASON %d\r\n", (int)err_code);
 		simple_uart_putstring((const uint8_t *)buf2);
+		ble_write_in_progress = false;
 	} else {
+		//Packet waiting for next communication window at this point?
 		simple_uart_putstring((const uint8_t *)"sd_ble_gattc_write() SUCESSFUL\r\n");
 	}
 }
@@ -194,6 +198,8 @@ static void send_data(uint8_t data)
 static void polling_timer_handler(void *p_context)
 {
 #if 1
+	if(ble_write_in_progress)
+		return;
 	if (exiting_connection)
 		return;
 
@@ -404,6 +410,12 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 			simple_uart_putstring((const uint8_t *)"Conn request timeout\r\n");
 			in_connection = false;
 		}
+	break;
+	case BLE_EVT_TX_COMPLETE: //THIS should always come after ATT_Write_command has been executed
+		if (ble_write_in_progress)
+		{
+			ble_write_in_progress = false;
+		}	
 	break;
 	}
 }
