@@ -9,6 +9,8 @@
 #include "device_manager.h"
 #include "pstorage.h"
 
+#include "action.h"
+
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0
 #define APP_ADV_INTERVAL                   MSEC_TO_UNITS(50, UNIT_0_625_MS)
 #define APP_ADV_TIMEOUT_IN_SECONDS         0
@@ -73,10 +75,42 @@ static void advertising_start()
 #endif
 }
 
+static void process_data(uint8_t data)
+{
+	switch (data) {
+	case ACTION_ARM_UP:
+		simple_uart_putstring((const uint8_t*) "UP\r\n");
+	break;
+
+	case ACTION_ROTATION_CW:
+		simple_uart_putstring((const uint8_t*) "CW\r\n");
+	break;
+
+	case ACTION_ROTATION_CCW:
+		simple_uart_putstring((const uint8_t*) "CCW\r\n");
+	break;
+
+	case ACTION_ARM_DOWN:
+		simple_uart_putstring((const uint8_t*) "DOWN\r\n");
+	break;
+
+	case ACTION_SWIPE_RIGHT:
+		simple_uart_putstring((const uint8_t*) "RIGHT\r\n");
+	break;
+
+	case ACTION_SWIPE_LEFT:
+		simple_uart_putstring((const uint8_t*) "LEFT\r\n");
+	break;
+
+	default:
+		simple_uart_putstring((const uint8_t*) "SHOULDN'T HAPPEN\r\n");
+	break;
+	}
+}
+
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	switch (p_ble_evt->header.evt_id) {
-	char buf[16];
 	case BLE_GAP_EVT_CONNECTED:
 		simple_uart_putstring((const uint8_t*) "Connected\r\n");
 		app_timer_stop(m_advblink_timer);
@@ -90,11 +124,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	break;
 
 	case BLE_GATTS_EVT_WRITE:
-
-		sprintf((char *)buf, "%d\r\n", p_ble_evt->evt.gatts_evt.params.write.data[0]);
-
-		simple_uart_putstring((const uint8_t *)"RX received data: ");
-		simple_uart_putstring((const uint8_t *)buf);
+		process_data(p_ble_evt->evt.gatts_evt.params.write.data[0]);
 	break;
 
 	default:
