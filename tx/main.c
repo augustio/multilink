@@ -325,6 +325,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 						simple_uart_putstring((const uint8_t *)"Connection failed. Reason: ");
 						sprintf(buf, "0x%x\r\n", (unsigned int)err_code);
 						simple_uart_putstring((const uint8_t *)buf);
+						in_connection = false;
 					} else {
 						simple_uart_putstring((const uint8_t *)"Connected. Please check the RX console now.\r\n");
 					}
