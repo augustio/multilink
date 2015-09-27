@@ -412,10 +412,11 @@ void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
 {
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GATTC_EVT_WRITE_RSP:
-	
+		simple_uart_putstring((const uint8_t*)"BLE_GATTC_EVT_WRITE_RSP\r\n");
 	break;
 
 	case BLE_GATTC_EVT_HVX:
+		simple_uart_putstring((const uint8_t*)"BLE_GATTC_EVT_HVX\r\n");
 	break;
 
 	case BLE_GATTC_EVT_TIMEOUT:
@@ -442,11 +443,6 @@ static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
 
 static void sys_evt_dispatch(uint32_t sys_evt)
 {
-	{
-		char buf[32];
-		sprintf(buf, "SYS DISPATCHER: %d\r\n", p_ble_evt->header.evt_id);
-		simple_uart_putstring((const uint8_t*)buf);
-	}
 	pstorage_sys_event_handler(sys_evt);
 }
 
