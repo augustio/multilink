@@ -63,6 +63,7 @@ static bool exiting_connection = false;
 static bool vibrating = false;
 
 static uint16_t m_conn_handle;
+static dm_handle_t m_dm_device_handle;
 
 #define APP_TIMER_PRESCALER	0
 #define APP_TIMER_MAX_TIMERS	8
@@ -408,7 +409,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	}
 }
 
-void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
+static void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
 {
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GATTC_EVT_WRITE_RSP:
@@ -604,6 +605,7 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 		exiting_connection = false;
 		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
+		m_dm_device_handle = (*p_handle);
 
 		// Discover peer's services.
 		err_code = ble_db_discovery_start(&m_ble_db_discovery,
@@ -761,6 +763,10 @@ static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 	}
 
 	if (target_characteristic_found) {
+		err_code = dm_security_setup_req(&m_dm_device_handle);
+		if (err_code != NRF_SUCCESS) {
+				simple_uart_putstring((const uint8_t *)"SECURITY SETUP REQUEST NOT SUCCESSFUL\r\n");
+		}
 		notif_enable(index);
 	}
 }
