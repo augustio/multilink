@@ -192,7 +192,6 @@ static void send_data(uint8_t data)
 
 static void polling_timer_handler(void *p_context)
 {
-#if 1
 	if (exiting_connection)
 		return;
 
@@ -249,55 +248,6 @@ static void polling_timer_handler(void *p_context)
 		simple_uart_putstring((const uint8_t *)"SHOULDN'T HAPPEN\r\n");
 	break;
 	}
-
-#else
-	int rot;
-
-	if (exiting_connection)
-		return;
-
-	if (vibrating)
-		return;
-
-	getXYZValues();
-	getGyroValues();
-
-	if (armIsDown()) {
-		uint32_t err_code;
-
-		simple_uart_putstring((const uint8_t *)"Down\r\n");
-
-		exiting_connection = true;
-
-		err_code = sd_ble_gap_disconnect(m_conn_handle,
-				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-		APP_ERROR_CHECK(err_code);
-
-		do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
-				VIBRATE_DURATION_EXTRA_LONG,
-				&vibrating);
-	}
-
-	if (armIsUp())
-		simple_uart_putstring((const uint8_t *)"Up\r\n");
-
-#if 0
-	if (armIsNeutral())
-		simple_uart_putstring((const uint8_t *)"Neutral\r\n");
-#endif
-
-	if (swipeRight())
-		simple_uart_putstring((const uint8_t *)"SRight\r\n");
-
-	if (swipeLeft())
-		simple_uart_putstring((const uint8_t *)"SLeft\r\n");
-
-	if ((rot = armRotation())) {
-		char buf[16];
-		sprintf(buf, "rot = %d\r\n", rot);
-		simple_uart_putstring((const uint8_t *)buf);
-	}
-#endif
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
