@@ -413,6 +413,11 @@ void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GATTC_EVT_WRITE_RSP:
 		simple_uart_putstring((const uint8_t*)"BLE_GATTC_EVT_WRITE_RSP\r\n");
+		{
+			char buf[32];
+			sprintf(buf, "WRITE_RSP: status = 0x%hx\r\n", p_ble_evt->evt.gattc_evt.gatt_status);
+			simple_uart_putstring((const uint8_t*)buf);
+		}
 	break;
 
 	case BLE_GATTC_EVT_HVX:
