@@ -173,8 +173,6 @@ static void send_data(uint8_t data)
 	buf[0] = data;
 	buf[1] = 0;
 
-	simple_uart_putstring((const uint8_t *)"preparing to send\r\n");
-
 	write_params.write_op = BLE_GATT_OP_WRITE_CMD;
 	write_params.handle = 0xe;
 	write_params.offset = 0;
@@ -435,12 +433,6 @@ static void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
 
 static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
 {
-	{
-		char buf[32];
-		sprintf(buf, "BLE DISPATCHER: %d\r\n", p_ble_evt->header.evt_id);
-		simple_uart_putstring((const uint8_t*)buf);
-	}
-
 	dm_ble_evt_handler(p_ble_evt);
 	ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
 	client_handling_ble_evt_handler(p_ble_evt);
