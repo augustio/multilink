@@ -758,24 +758,3 @@ int main(void)
 
 	return 0;
 }
-
-#if 0
-void GPIOTE_IRQHandler(void)
-{
-	if (NRF_GPIOTE->EVENTS_PORT)
-	{
-		NRF_GPIOTE->EVENTS_PORT = 0;
-		simple_uart_putstring((const uint8_t *)"IRQ handler\r\n");
-
-		if (vibrating)
-			return;
-
-		if (in_connection)
-			return;
-
-		if (!scanning)
-			start_scan = true;
-	}
-}
-#endif
-
