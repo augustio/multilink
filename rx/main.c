@@ -6,6 +6,8 @@
 #include "simple_uart.h"
 #include "nrf_gpio.h"
 #include "app_timer.h"
+#include "device_manager.h"
+#include "pstorage.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0
 #define APP_ADV_INTERVAL                   MSEC_TO_UNITS(50, UNIT_0_625_MS)
@@ -39,8 +41,16 @@
 app_timer_id_t m_advblink_timer;
 #endif
 
+#define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
+#define SEC_PARAM_MITM                   0                                          /**< Man In The Middle protection not required. */
+#define SEC_PARAM_IO_CAPABILITIES        BLE_GAP_IO_CAPS_NONE                       /**< No I/O capabilities. */
+#define SEC_PARAM_OOB                    0                                          /**< Out Of Band data not available. */
+#define SEC_PARAM_MIN_KEY_SIZE           7                                          /**< Minimum encryption key size. */
+#define SEC_PARAM_MAX_KEY_SIZE           16                                         /**< Maximum encryption key size. */
+
 static uint8_t m_base_uuid_type;
 static ble_gatts_char_handles_t  m_char_handles;
+static dm_application_instance_t m_app_handle;
 
 static void advertising_start()
 {
@@ -99,6 +109,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 
 static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
 {
+	dm_ble_evt_handler(p_ble_evt);
 	on_ble_evt(p_ble_evt);
 }
 
@@ -258,6 +269,42 @@ static void advblink_handler(void *p_context)
 }
 #endif
 
+static uint32_t device_manager_evt_handler(dm_handle_t const * p_handle,
+                                           dm_event_t const  * p_event,
+                                           ret_code_t        event_result)
+{
+    APP_ERROR_CHECK(event_result);
+    return NRF_SUCCESS;
+}
+
+static void device_manager_init(bool erase_bonds)
+{
+	uint32_t               err_code;
+	dm_init_param_t        init_param = {.clear_persistent_data = erase_bonds};
+	dm_application_param_t register_param;
+
+	// Initialize persistent storage module.
+	err_code = pstorage_init();
+	APP_ERROR_CHECK(err_code);
+
+	err_code = dm_init(&init_param);
+	APP_ERROR_CHECK(err_code);
+
+	memset(&register_param.sec_param, 0, sizeof(ble_gap_sec_params_t));
+
+	register_param.sec_param.bond         = SEC_PARAM_BOND;
+	register_param.sec_param.mitm         = SEC_PARAM_MITM;
+	register_param.sec_param.io_caps      = SEC_PARAM_IO_CAPABILITIES;
+	register_param.sec_param.oob          = SEC_PARAM_OOB;
+	register_param.sec_param.min_key_size = SEC_PARAM_MIN_KEY_SIZE;
+	register_param.sec_param.max_key_size = SEC_PARAM_MAX_KEY_SIZE;
+	register_param.evt_handler            = device_manager_evt_handler;
+	register_param.service_type           = DM_PROTOCOL_CNTXT_GATT_SRVR_ID;
+
+	err_code = dm_register(&m_app_handle, &register_param);
+	APP_ERROR_CHECK(err_code);
+}
+
 int main(void)
 {
 	uint32_t err_code;
@@ -272,7 +319,7 @@ int main(void)
 #endif
 
 	ble_stack_init();
-
+	device_manager_init(true);
 	gap_params_init();
 	advertising_init();
 	services_init();

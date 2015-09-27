@@ -40,6 +40,8 @@ C_SOURCE_FILES += \
 $(abspath ../../../main.c) \
 $(abspath ../../../simple_uart.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
+$(abspath ../../../../components/drivers_nrf/pstorage/pstorage.c) \
+$(abspath ../../../../components/ble/device_manager/device_manager_peripheral.c) \
 $(abspath ../../../../components/libraries/util/app_error.c) \
 $(abspath ../../../../components/libraries/timer/app_timer.c) \
 $(abspath ../../../../components/ble/ble_advertising/ble_advertising.c) \
