@@ -186,7 +186,7 @@ static void send_data(uint8_t data)
 		sprintf(buf2, "DATA NOT SENT, REASON %d\r\n", (int)err_code);
 		simple_uart_putstring((const uint8_t *)buf2);
 	} else {
-		simple_uart_putstring((const uint8_t *)"sd_ble_gattc_write() SUCESSFUL\r\n");
+		simple_uart_putstring((const uint8_t *)"sd_ble_gattc_write() SUCCESSFUL\r\n");
 	}
 }
 
@@ -625,6 +625,9 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 	case DM_EVT_SECURITY_SETUP_COMPLETE:
 		simple_uart_putstring((const uint8_t *)"DM_EVT_SECURITY_SETUP_COMPLETE\r\n");
+		gyroEnable();
+		err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
+		APP_ERROR_CHECK(err_code);
 	break;
 
 	case DM_EVT_LINK_SECURED:
@@ -697,6 +700,7 @@ static void timers_create()
 	APP_ERROR_CHECK(err_code);
 }
 
+#if 0
 static void notif_enable(int index)
 {
 	uint32_t                 err_code;
@@ -720,6 +724,7 @@ static void notif_enable(int index)
 
 	APP_ERROR_CHECK(err_code);
 }
+#endif
 
 static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 {
@@ -739,11 +744,6 @@ static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 				// Characteristic found. Store the information needed and break.
 				simple_uart_putstring((const uint8_t *)"FOUND THE TARGET CHARACTERISTIC\r\n");
 
-				gyroEnable();
-
-				err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
-				APP_ERROR_CHECK(err_code);
-
 				target_characteristic_found = true;
 				if (target_characteristic_found)
 					index = i;
@@ -759,7 +759,10 @@ static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 		if (err_code != NRF_SUCCESS) {
 				simple_uart_putstring((const uint8_t *)"SECURITY SETUP REQUEST NOT SUCCESSFUL\r\n");
 		}
+		index = index;
+#if 0
 		notif_enable(index);
+#endif
 	}
 }
 
