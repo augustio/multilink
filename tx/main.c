@@ -16,6 +16,7 @@
 #include "sw_spi.h"
 #include "vibrate.h"
 #include "gesture.h"
+#include "action.h"
 
 #define APP_GPIOTE_MAX_USERS 2
 
@@ -83,16 +84,6 @@ typedef struct
 	uint8_t  *p_data;
 	uint16_t data_len;
 } data_t;
-
-enum {
-	ACTION_NO_ACTION = -1,
-	ACTION_ARM_UP = 1,
-	ACTION_ROTATION_CCW,
-	ACTION_ROTATION_CW,
-	ACTION_ARM_DOWN,
-	ACTION_SWIPE_RIGHT,
-	ACTION_SWIPE_LEFT,
-};
 
 enum {
 	ORIENTATION_UNDEFINED = -1,
