@@ -60,6 +60,7 @@ static bool start_scan = false;
 static bool scanning = false;
 static bool in_connection = false;
 static bool exiting_connection = false;
+static bool memory_access_in_progress = false;
 
 static bool vibrating = false;
 
@@ -393,30 +394,26 @@ static void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
 	}
 }
 
-static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
-{
-	dm_ble_evt_handler(p_ble_evt);
-	ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
-	client_handling_ble_evt_handler(p_ble_evt);
-	on_ble_evt(p_ble_evt);
-}
-
-static void sys_evt_dispatch(uint32_t sys_evt)
-{
-	pstorage_sys_event_handler(sys_evt);
-}
-
 #define CHECK_ERROR_CODE do { \
 	char buf[8]; \
 	sprintf(buf, "%d\r\n", __LINE__); \
 	simple_uart_putstring((const uint8_t*)buf); \
 } while (0);
 
-static void scan_start()
+static void scan_start(void)
 {
 	/* For simplicity, we always do nonselective scan */
 
 	uint32_t err_code;
+	uint32_t count;
+
+	err_code = pstorage_access_status_get(&count);
+	APP_ERROR_CHECK(err_code);
+
+	if (count) {
+		memory_access_in_progress = true;
+		return;
+	}
 
 	m_scan_param.active       = 0;             // Active scanning set.
 	m_scan_param.selective    = 0;             // Selective scanning not set.
@@ -430,6 +427,39 @@ static void scan_start()
 
 	if (err_code != NRF_SUCCESS)
 		CHECK_ERROR_CODE;
+}
+
+static void on_sys_evt(uint32_t sys_evt)
+{
+	switch (sys_evt)
+	{
+	case NRF_EVT_FLASH_OPERATION_SUCCESS:
+		/* fall through */
+	case NRF_EVT_FLASH_OPERATION_ERROR:
+
+		if (memory_access_in_progress) {
+			memory_access_in_progress = false;
+			scan_start();
+		}
+	break;
+
+	default:
+	break;
+	}
+}
+
+static void ble_evt_dispatch(ble_evt_t *p_ble_evt)
+{
+	dm_ble_evt_handler(p_ble_evt);
+	ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
+	client_handling_ble_evt_handler(p_ble_evt);
+	on_ble_evt(p_ble_evt);
+}
+
+static void sys_evt_dispatch(uint32_t sys_evt)
+{
+	pstorage_sys_event_handler(sys_evt);
+	on_sys_evt(sys_evt);
 }
 
 static void ble_stack_init()
