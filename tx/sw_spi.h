@@ -12,7 +12,8 @@
 #define SPIM0_SS_PIN        4     /**< SPI Slave Select GPIO pin number. */
 #define SPIM0_INT1_PIN		9		/**< SPI Interrupt1 GPIO pin number */
 
-void spi_sw_master_init();
+void spi_sw_master_init(void);
 void spi_sw_master_send_bytes(uint16_t *tx_buffer, uint8_t *rx_buffer, uint16_t buffer_len);
+void spi_register_conf(void);
 
 #endif
