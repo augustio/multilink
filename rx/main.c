@@ -80,36 +80,36 @@ static void process_data(uint8_t data)
 {
 	switch (data) {
 	case ACTION_ARM_UP:
-		//simple_uart_putstring((const uint8_t*) "UP\r\n");
 		JVC_control(JVC_CMD_3_C);
+		simple_uart_putstring((const uint8_t*) "UP\r\n");
 	break;
 
 	case ACTION_ROTATION_CW:
 		JVC_control(JVC_CMD_3_B);
-		//simple_uart_putstring((const uint8_t*) "CW\r\n");
+		simple_uart_putstring((const uint8_t*) "CW\r\n");
 	break;
 
 	case ACTION_ROTATION_CCW:
 		JVC_control(JVC_CMD_3_A);
-		//simple_uart_putstring((const uint8_t*) "CCW\r\n");
+		simple_uart_putstring((const uint8_t*) "CCW\r\n");
 	break;
 
 	case ACTION_ARM_DOWN:
-		//simple_uart_putstring((const uint8_t*) "DOWN\r\n");
+		simple_uart_putstring((const uint8_t*) "DOWN\r\n");
 	break;
 
 	case ACTION_SWIPE_RIGHT:
 		JVC_control(JVC_CMD_3_6);
-		//simple_uart_putstring((const uint8_t*) "RIGHT\r\n");
+		simple_uart_putstring((const uint8_t*) "RIGHT\r\n");
 	break;
 
 	case ACTION_SWIPE_LEFT:
 		JVC_control(JVC_CMD_3_4);
-		//simple_uart_putstring((const uint8_t*) "LEFT\r\n");
+		simple_uart_putstring((const uint8_t*) "LEFT\r\n");
 	break;
 
 	default:
-		//simple_uart_putstring((const uint8_t*) "SHOULDN'T HAPPEN\r\n");
+		simple_uart_putstring((const uint8_t*) "SHOULDN'T HAPPEN\r\n");
 	break;
 	}
 }
