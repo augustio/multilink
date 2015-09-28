@@ -300,6 +300,31 @@ static bool is_our_target_device(data_t *type_data)
 	return !memcmp(type_data->p_data, TARGET_DEVICE_NAME, type_data->data_len - 1);
 }
 
+static bool is_same_peer_addr(const ble_gap_addr_t *src, const ble_gap_addr_t *dst)
+{
+	int i;
+
+	if (src->addr_type != dst->addr_type)
+		return false;
+
+	for (i = 0; i < BLE_GAP_ADDR_LEN; i++)
+		if (src->addr[i] != dst->addr[i])
+			return false;
+
+	return true;
+}
+
+static bool is_address_in_table(const ble_gap_addr_t *addr)
+{
+	int i;
+
+	for (i = 0; i < m_device_count; i++)
+		if (is_same_peer_addr(addr, &device_list[i].peer_addr))
+			return true;
+
+	return false;
+}
+
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	const ble_gap_evt_t *p_gap_evt = &p_ble_evt->evt.gap_evt;
@@ -342,7 +367,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 			if (is_our_target_device(&type_data)) {
 				simple_uart_putstring((const uint8_t *)"This is our guy\r\n");
 
-				if (m_device_count < MAX_DEVICE_COUNT) {
+				if (m_device_count < MAX_DEVICE_COUNT && !is_address_in_table(&p_gap_evt->params.adv_report.peer_addr)) {
 					device_list[m_device_count].rssi = p_gap_evt->params.adv_report.rssi;
 					device_list[m_device_count].peer_addr = p_gap_evt->params.adv_report.peer_addr;
 					m_device_count++;
@@ -354,6 +379,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 					simple_uart_putstring((const uint8_t *)buf);
 				}
 
+#if 0
 				if (!in_connection) {
 					simple_uart_putstring((const uint8_t *)"Not yet in connection, go connect\r\n");
 					// not yet in connection, go connect
@@ -377,6 +403,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 					}
 
 				}
+#endif
 			}
 		}
 
@@ -445,7 +472,7 @@ static void scan_start(void)
 	m_scan_param.interval     = SCAN_INTERVAL; // Scan interval.
 	m_scan_param.window       = SCAN_WINDOW;   // Scan window.
 	m_scan_param.p_whitelist  = NULL;          // Provide whitelist.
-	m_scan_param.timeout      = 0x0000;        // No timeout.
+	m_scan_param.timeout      = 0x0001;        // No timeout.
 
 	err_code = sd_ble_gap_scan_start(&m_scan_param);
 	APP_ERROR_CHECK(err_code);
@@ -820,6 +847,8 @@ int main(void)
 	gpiote_init();
 	gpiote_start();
 
+	scan_start();
+
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
 	while (1) {
@@ -827,7 +856,7 @@ int main(void)
 			scanning = true;
 			start_scan = false;
 			simple_uart_putstring((const uint8_t *)"\r\ngoes scanning\r\n");
-			scan_start();
+			//scan_start();
 		}
 		power_manage();
 	}
