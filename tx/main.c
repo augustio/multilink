@@ -333,7 +333,11 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 				simple_uart_putstring((const uint8_t *)"This is our guy, get connected\r\n");
 				err_code = sd_ble_gap_scan_stop();
 				if (err_code != NRF_SUCCESS) {
-					simple_uart_putstring((const uint8_t *)"Failed to properly stop scanning\r\n");
+					char buf[8];
+					sprintf(buf, "%d\r\n", (int)err_code);
+					simple_uart_putstring((const uint8_t *)"Failed to properly stop scanning, reason: ");
+					simple_uart_putstring((const uint8_t *)buf);
+
 				} else {
 					scanning = false;
 					in_connection = true;
