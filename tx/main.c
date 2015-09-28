@@ -199,16 +199,28 @@ static void polling_timer_handler(void *p_context)
 	case ACTION_ARM_UP:
 		simple_uart_putstring((const uint8_t *)"UP\r\n");
 		send_data(ACTION_ARM_UP);
+
+		do_vibrate(VIBRATE_DURATION_SHORT,
+				VIBRATE_PAUSE_DURATION_NORMAL,
+				&vibrating);
 	break;
 
 	case ACTION_ROTATION_CCW:
 		simple_uart_putstring((const uint8_t *)"CCW\r\n");
 		send_data(ACTION_ROTATION_CCW);
+
+		do_vibrate(VIBRATE_DURATION_SHORT,
+				VIBRATE_PAUSE_DURATION_NORMAL,
+				&vibrating);
 	break;
 
 	case ACTION_ROTATION_CW:
 		simple_uart_putstring((const uint8_t *)"CW\r\n");
 		send_data(ACTION_ROTATION_CW);
+
+		do_vibrate(VIBRATE_DURATION_SHORT,
+				VIBRATE_PAUSE_DURATION_NORMAL,
+				&vibrating);
 	break;
 
 	case ACTION_ARM_DOWN:
@@ -219,7 +231,7 @@ static void polling_timer_handler(void *p_context)
 		APP_ERROR_CHECK(err_code);
 
 		do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
-				VIBRATE_DURATION_EXTRA_LONG,
+				VIBRATE_PAUSE_DURATION_NORMAL,
 				&vibrating);
 
 		simple_uart_putstring((const uint8_t *)"DOWN\r\n");
@@ -228,11 +240,19 @@ static void polling_timer_handler(void *p_context)
 	case ACTION_SWIPE_RIGHT:
 		simple_uart_putstring((const uint8_t *)"RIGHT\r\n");
 		send_data(ACTION_SWIPE_RIGHT);
+
+		do_vibrate(VIBRATE_DURATION_LONG,
+				VIBRATE_PAUSE_DURATION_EXTRA_LONG,
+				&vibrating);
 	break;
 
 	case ACTION_SWIPE_LEFT:
 		simple_uart_putstring((const uint8_t *)"LEFT\r\n");
 		send_data(ACTION_SWIPE_LEFT);
+
+		do_vibrate(VIBRATE_DURATION_LONG,
+				VIBRATE_PAUSE_DURATION_EXTRA_LONG,
+				&vibrating);
 	break;
 
 	default:
