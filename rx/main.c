@@ -8,6 +8,7 @@
 #include "app_timer.h"
 #include "device_manager.h"
 #include "pstorage.h"
+#include "IRLED_cntrl.h"
 
 #include "action.h"
 
@@ -79,31 +80,36 @@ static void process_data(uint8_t data)
 {
 	switch (data) {
 	case ACTION_ARM_UP:
-		simple_uart_putstring((const uint8_t*) "UP\r\n");
+		//simple_uart_putstring((const uint8_t*) "UP\r\n");
+		JVC_control(JVC_CMD_3_C);
 	break;
 
 	case ACTION_ROTATION_CW:
-		simple_uart_putstring((const uint8_t*) "CW\r\n");
+		JVC_control(JVC_CMD_3_B);
+		//simple_uart_putstring((const uint8_t*) "CW\r\n");
 	break;
 
 	case ACTION_ROTATION_CCW:
-		simple_uart_putstring((const uint8_t*) "CCW\r\n");
+		JVC_control(JVC_CMD_3_A);
+		//simple_uart_putstring((const uint8_t*) "CCW\r\n");
 	break;
 
 	case ACTION_ARM_DOWN:
-		simple_uart_putstring((const uint8_t*) "DOWN\r\n");
+		//simple_uart_putstring((const uint8_t*) "DOWN\r\n");
 	break;
 
 	case ACTION_SWIPE_RIGHT:
-		simple_uart_putstring((const uint8_t*) "RIGHT\r\n");
+		JVC_control(JVC_CMD_3_6);
+		//simple_uart_putstring((const uint8_t*) "RIGHT\r\n");
 	break;
 
 	case ACTION_SWIPE_LEFT:
-		simple_uart_putstring((const uint8_t*) "LEFT\r\n");
+		JVC_control(JVC_CMD_3_4);
+		//simple_uart_putstring((const uint8_t*) "LEFT\r\n");
 	break;
 
 	default:
-		simple_uart_putstring((const uint8_t*) "SHOULDN'T HAPPEN\r\n");
+		//simple_uart_putstring((const uint8_t*) "SHOULDN'T HAPPEN\r\n");
 	break;
 	}
 }
