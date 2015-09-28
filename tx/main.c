@@ -67,6 +67,16 @@ static bool vibrating = false;
 static uint16_t m_conn_handle;
 static dm_handle_t m_dm_device_handle;
 
+static uint8_t m_device_count;
+#define MAX_DEVICE_COUNT 16
+
+typedef struct {
+	ble_gap_addr_t peer_addr;
+	int8_t         rssi;
+} electria_device_t;
+
+static electria_device_t device_list[MAX_DEVICE_COUNT];
+
 #define APP_TIMER_PRESCALER	0
 #define APP_TIMER_MAX_TIMERS	8
 #define APP_TIMER_QUEUE_SIZE	12
@@ -330,19 +340,30 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 			simple_uart_putstring((const uint8_t *)buf);
 
 			if (is_our_target_device(&type_data)) {
-				simple_uart_putstring((const uint8_t *)"This is our guy, get connected\r\n");
-				err_code = sd_ble_gap_scan_stop();
-				if (err_code != NRF_SUCCESS) {
-					char buf[8];
-					sprintf(buf, "%d\r\n", (int)err_code);
-					simple_uart_putstring((const uint8_t *)"Failed to properly stop scanning, reason: ");
-					simple_uart_putstring((const uint8_t *)buf);
+				simple_uart_putstring((const uint8_t *)"This is our guy\r\n");
 
-				} else {
-					scanning = false;
+				if (m_device_count < MAX_DEVICE_COUNT) {
+					device_list[m_device_count].rssi = p_gap_evt->params.adv_report.rssi;
+					device_list[m_device_count].peer_addr = p_gap_evt->params.adv_report.peer_addr;
+					m_device_count++;
+				}
+
+				{
+					char buf[32];
+					sprintf(buf, "Total device count: %d\r\n", m_device_count);
+					simple_uart_putstring((const uint8_t *)buf);
+				}
+
+				if (!in_connection) {
+					simple_uart_putstring((const uint8_t *)"Not yet in connection, go connect\r\n");
+					// not yet in connection, go connect
 					in_connection = true;
 
+#if 0
 					err_code = sd_ble_gap_connect(&p_gap_evt->params.adv_report.peer_addr,
+#else
+					err_code = sd_ble_gap_connect(&device_list[0].peer_addr,
+#endif
 									&m_scan_param,
 									&m_connection_param);
 
