@@ -100,6 +100,8 @@ enum {
 	STATE_RX_CONTROL,
 } global_state ;
 
+static bool double_tap_occurred = false;
+
 enum {
 	ORIENTATION_UNDEFINED = -1,
 	ORIENTATION_NEUTRAL = 0,
@@ -584,15 +586,7 @@ static void gpiote_event_handler(uint32_t lth, uint32_t htl)
 
 	if (htl) {
 		simple_uart_putstring((const uint8_t *)"HTL\r\n");
-		if (STATE_SLEEP == global_state) {
-			global_state = STATE_RX_GATHER;
-			do_vibrate(VIBRATE_DURATION_SHORT,
-					VIBRATE_PAUSE_DURATION_SHORT,
-					&vibrating);
-
-			m_device_count = 0;
-			scan_start();
-		}
+		double_tap_occurred = true;
 	}
 }
 
@@ -844,6 +838,17 @@ int main(void)
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
 	while (1) {
+		if (double_tap_occurred) {
+			double_tap_occurred = false;
+			if (STATE_SLEEP == global_state) {
+				global_state = STATE_RX_GATHER;
+				m_device_count = 0;
+				do_vibrate(VIBRATE_DURATION_SHORT,
+						VIBRATE_PAUSE_DURATION_SHORT,
+						&vibrating);
+				scan_start();
+			}
+		}
 		power_manage();
 	}
 
