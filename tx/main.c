@@ -477,8 +477,8 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 					simple_uart_putstring((const uint8_t *)"STATE GATHER->CHANGE\r\n");
 					scan_start();
 				} else {
-					global_state = STATE_SLEEP;
 					simple_uart_putstring((const uint8_t *)"STATE GATHER->SLEEP\r\n");
+					global_state = STATE_SLEEP;
 					do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 							VIBRATE_PAUSE_DURATION_SHORT,
 							&vibrating);
@@ -599,6 +599,9 @@ static void gpiote_init(void)
 
 static void gpiote_event_handler(uint32_t lth, uint32_t htl)
 {
+	if (vibrating)
+		return;
+
 	if (lth)
 		simple_uart_putstring((const uint8_t *)"LTH\r\n");
 
