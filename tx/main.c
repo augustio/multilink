@@ -45,7 +45,6 @@
 
 static ble_gap_scan_params_t m_scan_param; /**< Scan parameters requested for scanning and connection. */
 
-static dm_application_instance_t    m_dm_app_id;
 static const ble_gap_conn_params_t m_connection_param =
 {
 	(uint16_t)MIN_CONNECTION_INTERVAL,   // Minimum connection
@@ -54,21 +53,17 @@ static const ble_gap_conn_params_t m_connection_param =
 	(uint16_t)SUPERVISION_TIMEOUT        // Supervision time-out
 };
 
-static uint8_t   m_base_uuid_type;
 
-static bool start_scan = false;
-static bool scanning = false;
-static bool in_connection = false;
-static bool exiting_connection = false;
 static bool memory_access_in_progress = false;
-
 static bool vibrating = false;
 
+static dm_application_instance_t    m_dm_app_id;
+static uint8_t   m_base_uuid_type;
 static uint16_t m_conn_handle;
 static dm_handle_t m_dm_device_handle;
 
-static uint8_t m_device_count;
 #define MAX_DEVICE_COUNT 16
+static uint8_t m_device_count;
 
 typedef struct {
 	ble_gap_addr_t peer_addr;
@@ -95,6 +90,15 @@ typedef struct
 	uint8_t  *p_data;
 	uint16_t data_len;
 } data_t;
+
+enum {
+	STATE_SLEEP,
+	STATE_CONFIG,
+	STATE_RX_SELECT,
+	STATE_RX_CHANGE,
+	STATE_RX_GATHER,
+	STATE_RX_CONTROL,
+} global_state ;
 
 enum {
 	ORIENTATION_UNDEFINED = -1,
@@ -194,9 +198,6 @@ static void send_data(uint8_t data)
 
 static void polling_timer_handler(void *p_context)
 {
-	if (exiting_connection)
-		return;
-
 	if (vibrating)
 		return;
 
@@ -235,7 +236,6 @@ static void polling_timer_handler(void *p_context)
 	break;
 
 	case ACTION_ARM_DOWN:
-		exiting_connection = true;
 
 		err_code = sd_ble_gap_disconnect(m_conn_handle,
 				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
@@ -436,11 +436,9 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	case BLE_GAP_EVT_TIMEOUT:
 		if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
 			simple_uart_putstring((const uint8_t *)"Scan timeout\r\n");
-			scanning = false;
 		}
 		else if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
 			simple_uart_putstring((const uint8_t *)"Conn request timeout\r\n");
-			in_connection = false;
 		}
 	break;
 	}
@@ -585,16 +583,16 @@ static void gpiote_event_handler(uint32_t lth, uint32_t htl)
 		simple_uart_putstring((const uint8_t *)"LTH\r\n");
 
 	if (htl) {
-		if (vibrating)
-			return;
-
-		if (in_connection)
-			return;
-
-		if (!scanning)
-			start_scan = true;
-
 		simple_uart_putstring((const uint8_t *)"HTL\r\n");
+		if (STATE_SLEEP == global_state) {
+			global_state = STATE_RX_GATHER;
+			do_vibrate(VIBRATE_DURATION_SHORT,
+					VIBRATE_PAUSE_DURATION_SHORT,
+					&vibrating);
+
+			m_device_count = 0;
+			start_scan();
+		}
 	}
 }
 
@@ -633,7 +631,6 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		simple_uart_putstring((const uint8_t *)"Connected to ");
 		simple_uart_putstring((const uint8_t *)buf);
 
-		exiting_connection = false;
 		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
 		m_dm_device_handle = (*p_handle);
 
@@ -654,7 +651,6 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		gyroDisable();
 
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
-		in_connection = false;
 	break;
 
 	case DM_EVT_SECURITY_SETUP:
@@ -826,6 +822,8 @@ static void service_init()
 
 int main(void)
 {
+	global_state = STATE_CONFIG;
+
 	simple_uart_config(11, 12, 11, 11, false);
 
 	ble_stack_init();
@@ -841,17 +839,11 @@ int main(void)
 	gpiote_init();
 	gpiote_start();
 
-	scan_start();
+	global_state = STATE_SLEEP;
 
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
 	while (1) {
-		if (start_scan && !scanning) {
-			scanning = true;
-			start_scan = false;
-			simple_uart_putstring((const uint8_t *)"\r\ngoes scanning\r\n");
-			//scan_start();
-		}
 		power_manage();
 	}
 
