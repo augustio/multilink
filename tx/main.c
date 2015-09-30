@@ -206,6 +206,8 @@ static void polling_timer_handler(void *p_context)
 	if (vibrating)
 		return;
 
+	uint32_t err_code;
+
 	switch (getAction()) {
 
 	case ACTION_NO_ACTION:
@@ -240,11 +242,17 @@ static void polling_timer_handler(void *p_context)
 
 	case ACTION_ARM_DOWN:
 		simple_uart_putstring((const uint8_t *)"DOWN\r\n");
-		send_data(ACTION_ROTATION_CW);
 
-		do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
-				VIBRATE_PAUSE_DURATION_NORMAL,
-				&vibrating);
+		err_code = app_timer_stop(m_polling_timer);
+		APP_ERROR_CHECK(err_code);
+
+		if (isGyroEnabled())
+			gyroDisable();
+
+		global_state = STATE_SLEEP;
+		err_code = sd_ble_gap_disconnect(m_conn_handle,
+				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+		APP_ERROR_CHECK(err_code);
 	break;
 
 	case ACTION_SWIPE_RIGHT:
@@ -376,8 +384,6 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 		uint32_t err_code;
 		data_t adv_data;
 		data_t type_data;
-
-		simple_uart_putstring((const uint8_t *)"Adv event\r\n");
 
 #if 0
 		int i;
@@ -679,7 +685,6 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 	case DM_EVT_DISCONNECTION:
 		memset(&m_ble_db_discovery, 0 , sizeof (m_ble_db_discovery));
-
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
 	break;
 
