@@ -201,6 +201,11 @@ static void send_data(uint8_t data)
 	}
 }
 
+static uint8_t get_rx_number_of_commands()
+{
+	return 5;
+}
+
 static void polling_timer_handler(void *p_context)
 {
 	if (vibrating)
@@ -215,11 +220,22 @@ static void polling_timer_handler(void *p_context)
 
 	case ACTION_ARM_UP:
 		simple_uart_putstring((const uint8_t *)"UP\r\n");
-		send_data(ACTION_ARM_UP);
+		if (STATE_RX_SELECT == global_state) {
+			simple_uart_putstring((const uint8_t *)"RX SELECTED\r\n");
+			do_vibrate(VIBRATE_DURATION_SHORT,
+					VIBRATE_PAUSE_DURATION_NORMAL,
+					&vibrating);
 
-		do_vibrate(VIBRATE_DURATION_SHORT,
-				VIBRATE_PAUSE_DURATION_NORMAL,
-				&vibrating);
+			if (get_rx_number_of_commands() == 5)
+				gyroEnable();
+
+			global_state = STATE_RX_CONTROL;
+		} else if (STATE_RX_CONTROL == global_state) {
+			send_data(ACTION_ARM_UP);
+			do_vibrate(VIBRATE_DURATION_SHORT,
+					VIBRATE_PAUSE_DURATION_NORMAL,
+					&vibrating);
+		}
 	break;
 
 	case ACTION_ROTATION_CCW:
