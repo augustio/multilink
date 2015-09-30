@@ -401,7 +401,6 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 
 		if (err_code == NRF_SUCCESS) {
 #if 0
-			char buf[48];
 
 			simple_uart_putstring((const uint8_t *)"Found good data, which is \r\n");
 			sprintf(buf, "\t%s\r\n", type_data.p_data);
@@ -409,15 +408,39 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 #endif
 
 			if (is_our_target_device(&type_data)) {
-				simple_uart_putstring((const uint8_t *)"This is our guy\r\n");
 
-				if (m_device_count < MAX_DEVICE_COUNT && !is_address_in_table(&p_gap_evt->params.adv_report.peer_addr)) {
-					device_list[m_device_count].rssi = p_gap_evt->params.adv_report.rssi;
-					device_list[m_device_count].peer_addr = p_gap_evt->params.adv_report.peer_addr;
-					m_device_count++;
+				if (STATE_RX_GATHER == global_state) {
+					if (m_device_count < MAX_DEVICE_COUNT && !is_address_in_table(&p_gap_evt->params.adv_report.peer_addr)) {
+						char buf[48];
+						device_list[m_device_count].rssi = p_gap_evt->params.adv_report.rssi;
+						device_list[m_device_count].peer_addr = p_gap_evt->params.adv_report.peer_addr;
+						m_device_count++;
+						sprintf(buf, "Total device count: %d\r\n", m_device_count);
+						simple_uart_putstring((const uint8_t *)buf);
+					}
+					qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
+				} else if (STATE_RX_CHANGE == global_state && !is_connecting && is_same_peer_addr(&target_addr, &p_gap_evt->params.adv_report.peer_addr)) {
+
+					err_code = sd_ble_gap_connect(&target_addr,
+							&m_scan_param,
+							&m_connection_param);
+
+					if (err_code != NRF_SUCCESS) {
+						char buf[8];
+						simple_uart_putstring((const uint8_t *)"Connection failed. Reason: ");
+						sprintf(buf, "0x%x\r\n", (unsigned int)err_code);
+						simple_uart_putstring((const uint8_t *)buf);
+						global_state = STATE_SLEEP;
+						do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
+								VIBRATE_PAUSE_DURATION_SHORT,
+								&vibrating);
+					} else {
+						is_connecting = true;
+						simple_uart_putstring((const uint8_t *)"Started connection process. Please check the RX console now.\r\n");
+					}
+
 				}
 
-				qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
 
 #if 0
 				{
@@ -434,8 +457,6 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 						simple_uart_putstring((const uint8_t *)buf);
 					}
 
-					sprintf(buf, "Total device count: %d\r\n", m_device_count);
-					simple_uart_putstring((const uint8_t *)buf);
 				}
 
 				if (!in_connection) {
