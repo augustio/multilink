@@ -591,7 +591,7 @@ static void gpiote_event_handler(uint32_t lth, uint32_t htl)
 					&vibrating);
 
 			m_device_count = 0;
-			start_scan();
+			scan_start();
 		}
 	}
 }
