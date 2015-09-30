@@ -329,7 +329,7 @@ static int compare_rssi(const void *src, const void *dst)
 {
 	electria_device_t *srcd = (electria_device_t *)src;
 	electria_device_t *dstd = (electria_device_t *)dst;
-	return srcd->rssi - dstd->rssi;
+	return dstd->rssi - srcd->rssi;
 }
 
 static void on_ble_evt(ble_evt_t *p_ble_evt)
@@ -346,6 +346,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 
 		simple_uart_putstring((const uint8_t *)"Adv event\r\n");
 
+#if 0
 		for (i = 0; i < p_ble_evt->evt.gap_evt.params.adv_report.dlen; i++) {
 			char buf[8];
 			sprintf(buf, "%x ", p_ble_evt->evt.gap_evt.params.adv_report.data[i]);
@@ -353,7 +354,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 		}
 
 		simple_uart_putstring((const uint8_t *)"\r\n");
-		
+#endif
 		adv_data.p_data = (uint8_t *)p_ble_evt->evt.gap_evt.params.adv_report.data;
 		adv_data.data_len = p_gap_evt->params.adv_report.dlen;
 
@@ -365,11 +366,13 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 		err_code = adv_report_parse(BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME, &adv_data, &type_data);
 
 		if (err_code == NRF_SUCCESS) {
-			char buf[32];
+			char buf[48];
 
+#if 0
 			simple_uart_putstring((const uint8_t *)"Found good data, which is \r\n");
 			sprintf(buf, "\t%s\r\n", type_data.p_data);
 			simple_uart_putstring((const uint8_t *)buf);
+#endif
 
 			if (is_our_target_device(&type_data)) {
 				simple_uart_putstring((const uint8_t *)"This is our guy\r\n");
@@ -383,20 +386,19 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 				qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
 
 				{
-					simple_uart_putstring((const uint8_t *)buf);
-
 					for (i = 0; i < m_device_count; i++) {
-						sprintf(buf, "dev[%d] %hhx:%hhx:%hhx:%hhx:%hhx:%hhx rssi = %hhd\n\r",
-								i, device_list[i].rssi,
+						sprintf(buf, "dev[%d] %02x:%02x:%02x:%02x:%02x:%02x rssi = %d\n\r",
+								i,
 								device_list[i].peer_addr.addr[0],
 								device_list[i].peer_addr.addr[1],
 								device_list[i].peer_addr.addr[2],
 								device_list[i].peer_addr.addr[3],
 								device_list[i].peer_addr.addr[4],
-								device_list[i].peer_addr.addr[5]);
+								device_list[i].peer_addr.addr[5],
+								device_list[i].rssi);
+						simple_uart_putstring((const uint8_t *)buf);
 					}
 
-					simple_uart_putstring((const uint8_t *)buf);
 					sprintf(buf, "Total device count: %d\r\n", m_device_count);
 					simple_uart_putstring((const uint8_t *)buf);
 				}
@@ -494,7 +496,7 @@ static void scan_start(void)
 	m_scan_param.interval     = SCAN_INTERVAL; // Scan interval.
 	m_scan_param.window       = SCAN_WINDOW;   // Scan window.
 	m_scan_param.p_whitelist  = NULL;          // Provide whitelist.
-	m_scan_param.timeout      = 0x0001;        // No timeout.
+	m_scan_param.timeout      = 0x0003;        // No timeout.
 
 	err_code = sd_ble_gap_scan_start(&m_scan_param);
 	APP_ERROR_CHECK(err_code);
