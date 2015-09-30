@@ -56,6 +56,7 @@ static const ble_gap_conn_params_t m_connection_param =
 
 static bool memory_access_in_progress = false;
 static bool vibrating = false;
+static bool is_connecting = false;
 
 static dm_application_instance_t    m_dm_app_id;
 static uint8_t   m_base_uuid_type;
@@ -71,6 +72,7 @@ typedef struct {
 } electria_device_t;
 
 static electria_device_t device_list[MAX_DEVICE_COUNT];
+static ble_gap_addr_t target_addr;
 
 #define APP_TIMER_PRESCALER	0
 #define APP_TIMER_MAX_TIMERS	8
@@ -101,6 +103,7 @@ enum {
 } global_state ;
 
 static bool double_tap_occurred = false;
+static bool is_connected = false;
 
 enum {
 	ORIENTATION_UNDEFINED = -1,
@@ -205,8 +208,6 @@ static void polling_timer_handler(void *p_context)
 
 	switch (getAction()) {
 
-	uint32_t err_code;
-
 	case ACTION_NO_ACTION:
 	break;
 
@@ -238,16 +239,12 @@ static void polling_timer_handler(void *p_context)
 	break;
 
 	case ACTION_ARM_DOWN:
-
-		err_code = sd_ble_gap_disconnect(m_conn_handle,
-				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-		APP_ERROR_CHECK(err_code);
+		simple_uart_putstring((const uint8_t *)"DOWN\r\n");
+		send_data(ACTION_ROTATION_CW);
 
 		do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 				VIBRATE_PAUSE_DURATION_NORMAL,
 				&vibrating);
-
-		simple_uart_putstring((const uint8_t *)"DOWN\r\n");
 	break;
 
 	case ACTION_SWIPE_RIGHT:
@@ -272,6 +269,41 @@ static void polling_timer_handler(void *p_context)
 		simple_uart_putstring((const uint8_t *)"SHOULDN'T HAPPEN\r\n");
 	break;
 	}
+}
+
+#define CHECK_ERROR_CODE do { \
+	char buf[8]; \
+	sprintf(buf, "%d\r\n", __LINE__); \
+	simple_uart_putstring((const uint8_t*)buf); \
+} while (0);
+
+static void scan_start(void)
+{
+	/* For simplicity, we always do nonselective scan */
+
+	uint32_t err_code;
+	uint32_t count;
+
+	err_code = pstorage_access_status_get(&count);
+	APP_ERROR_CHECK(err_code);
+
+	if (count) {
+		memory_access_in_progress = true;
+		return;
+	}
+
+	m_scan_param.active       = 0;             // Active scanning set.
+	m_scan_param.selective    = 0;             // Selective scanning not set.
+	m_scan_param.interval     = SCAN_INTERVAL; // Scan interval.
+	m_scan_param.window       = SCAN_WINDOW;   // Scan window.
+	m_scan_param.p_whitelist  = NULL;          // Provide whitelist.
+	m_scan_param.timeout      = 0x0001;        // No timeout.
+
+	err_code = sd_ble_gap_scan_start(&m_scan_param);
+	APP_ERROR_CHECK(err_code);
+
+	if (err_code != NRF_SUCCESS)
+		CHECK_ERROR_CODE;
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
@@ -438,6 +470,24 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	case BLE_GAP_EVT_TIMEOUT:
 		if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
 			simple_uart_putstring((const uint8_t *)"Scan timeout\r\n");
+			if (STATE_RX_GATHER == global_state) {
+				if (m_device_count) {
+					target_addr = device_list[0].peer_addr;
+					global_state = STATE_RX_CHANGE;
+					scan_start();
+				} else {
+					global_state = STATE_SLEEP;
+					do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
+							VIBRATE_PAUSE_DURATION_SHORT,
+							&vibrating);
+				}
+			} else if (STATE_RX_CHANGE == global_state &&
+					!is_connecting) {
+					global_state = STATE_SLEEP;
+					do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
+							VIBRATE_PAUSE_DURATION_SHORT,
+							&vibrating);
+			}
 		}
 		else if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
 			simple_uart_putstring((const uint8_t *)"Conn request timeout\r\n");
@@ -468,41 +518,6 @@ static void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
 	default:
 	break;
 	}
-}
-
-#define CHECK_ERROR_CODE do { \
-	char buf[8]; \
-	sprintf(buf, "%d\r\n", __LINE__); \
-	simple_uart_putstring((const uint8_t*)buf); \
-} while (0);
-
-static void scan_start(void)
-{
-	/* For simplicity, we always do nonselective scan */
-
-	uint32_t err_code;
-	uint32_t count;
-
-	err_code = pstorage_access_status_get(&count);
-	APP_ERROR_CHECK(err_code);
-
-	if (count) {
-		memory_access_in_progress = true;
-		return;
-	}
-
-	m_scan_param.active       = 0;             // Active scanning set.
-	m_scan_param.selective    = 0;             // Selective scanning not set.
-	m_scan_param.interval     = SCAN_INTERVAL; // Scan interval.
-	m_scan_param.window       = SCAN_WINDOW;   // Scan window.
-	m_scan_param.p_whitelist  = NULL;          // Provide whitelist.
-	m_scan_param.timeout      = 0x0003;        // No timeout.
-
-	err_code = sd_ble_gap_scan_start(&m_scan_param);
-	APP_ERROR_CHECK(err_code);
-
-	if (err_code != NRF_SUCCESS)
-		CHECK_ERROR_CODE;
 }
 
 static void on_sys_evt(uint32_t sys_evt)
@@ -637,12 +652,6 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 	case DM_EVT_DISCONNECTION:
 		memset(&m_ble_db_discovery, 0 , sizeof (m_ble_db_discovery));
-
-		simple_uart_putstring((const uint8_t *)"DM_EVENT_DISCONNECTION\r\n");
-		err_code = app_timer_stop(m_polling_timer);
-		APP_ERROR_CHECK(err_code);
-
-		gyroDisable();
 
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
 	break;
@@ -814,6 +823,17 @@ static void service_init()
 	APP_ERROR_CHECK(err_code);
 }
 
+static bool is_multiple_rooms(void)
+{
+	// FIXME
+	return true;
+}
+
+static ble_gap_addr_t get_best_rx_next_room(void)
+{
+	return device_list[0].peer_addr;
+}
+
 int main(void)
 {
 	global_state = STATE_CONFIG;
@@ -847,6 +867,18 @@ int main(void)
 						VIBRATE_PAUSE_DURATION_SHORT,
 						&vibrating);
 				scan_start();
+			} else if (STATE_RX_SELECT == global_state &&
+					is_multiple_rooms()) {
+				global_state = STATE_RX_CHANGE;
+				if (is_connected) {
+					uint32_t err_code;
+					err_code = app_timer_stop(m_polling_timer);
+					APP_ERROR_CHECK(err_code);
+					target_addr = get_best_rx_next_room();
+					err_code = sd_ble_gap_disconnect(m_conn_handle,
+							BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+					APP_ERROR_CHECK(err_code);
+				}
 			}
 		}
 		power_manage();
