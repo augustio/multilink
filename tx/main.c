@@ -689,9 +689,18 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 	case DM_EVT_SECURITY_SETUP_COMPLETE:
 		simple_uart_putstring((const uint8_t *)"DM_EVT_SECURITY_SETUP_COMPLETE\r\n");
-		gyroEnable();
+
+		is_connecting = false;
+		is_connected = true;
+		global_state = STATE_RX_SELECT;
+
+		do_vibrate(VIBRATE_DURATION_SHORT,
+				VIBRATE_PAUSE_DURATION_NORMAL,
+				&vibrating);
+
 		err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
 		APP_ERROR_CHECK(err_code);
+
 	break;
 
 	case DM_EVT_LINK_SECURED:
