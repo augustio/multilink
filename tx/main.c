@@ -325,6 +325,13 @@ static bool is_address_in_table(const ble_gap_addr_t *addr)
 	return false;
 }
 
+static int compare_rssi(const void *src, const void *dst)
+{
+	electria_device_t *srcd = (electria_device_t *)src;
+	electria_device_t *dstd = (electria_device_t *)dst;
+	return srcd->rssi - dstd->rssi;
+}
+
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	const ble_gap_evt_t *p_gap_evt = &p_ble_evt->evt.gap_evt;
@@ -373,8 +380,23 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 					m_device_count++;
 				}
 
+				qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
+
 				{
-					char buf[32];
+					simple_uart_putstring((const uint8_t *)buf);
+
+					for (i = 0; i < m_device_count; i++) {
+						sprintf(buf, "dev[%d] %hhx:%hhx:%hhx:%hhx:%hhx:%hhx rssi = %hhd\n\r",
+								i, device_list[i].rssi,
+								device_list[i].peer_addr.addr[0],
+								device_list[i].peer_addr.addr[1],
+								device_list[i].peer_addr.addr[2],
+								device_list[i].peer_addr.addr[3],
+								device_list[i].peer_addr.addr[4],
+								device_list[i].peer_addr.addr[5]);
+					}
+
+					simple_uart_putstring((const uint8_t *)buf);
 					sprintf(buf, "Total device count: %d\r\n", m_device_count);
 					simple_uart_putstring((const uint8_t *)buf);
 				}
