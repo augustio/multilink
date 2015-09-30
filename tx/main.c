@@ -684,8 +684,29 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 	break;
 
 	case DM_EVT_DISCONNECTION:
+		is_connected = false;
+
 		memset(&m_ble_db_discovery, 0 , sizeof (m_ble_db_discovery));
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
+
+		if (STATE_RX_CHANGE == global_state) {
+			scan_start();
+		} else {
+			err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
+			APP_ERROR_CHECK(err_code);
+
+			if (isGyroEnabled()) {
+				gyroDisable();
+			}
+
+			global_state = STATE_SLEEP;
+
+			do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
+					VIBRATE_PAUSE_DURATION_NORMAL,
+					&vibrating);
+		}
+
+		simple_uart_putstring((const uint8_t *)"DM_EVT_DISCONNECTION\r\n");
 	break;
 
 	case DM_EVT_SECURITY_SETUP:
