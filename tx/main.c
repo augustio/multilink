@@ -877,8 +877,15 @@ static void service_init()
 
 static bool is_multiple_rooms(void)
 {
-	// FIXME
-	return true;
+	uint8_t i, j;
+
+	/* This is O(n^2), but called seldom, so let it be. */
+
+	for (i = 0; i < m_device_count; i++)
+		for (j = 0; j < m_device_count; j++)
+			if ((i != j) && device_list[i].room_id != device_list[j].room_id)
+				return true;
+	return false;
 }
 
 static uint8_t get_best_rx_next_room()
