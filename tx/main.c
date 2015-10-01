@@ -688,7 +688,7 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		if (STATE_RX_CHANGE == global_state) {
 			scan_start();
 		} else {
-			err_code = app_timer_start(m_polling_timer, POLLING_INTERVAL, NULL);
+			err_code = app_timer_stop(m_polling_timer);
 			APP_ERROR_CHECK(err_code);
 
 			if (isGyroEnabled()) {
