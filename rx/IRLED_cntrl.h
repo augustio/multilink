@@ -12,8 +12,8 @@
 #define SAMSUNG_OFF_PERIOD 15 //8on & 18off produced actual 10.2 on & 21.0 off. 6 & 15 are 8.1 & 18.2
 #define FINLUX_ON_PERIOD 7 //Measured 9.4 & 18.2
 #define FINLUX_OFF_PERIOD 15 //8on & 18off produced actual 10.1 on & 21.0 off. 7 & 15 are 9.15 & 18
-#define SONY_ON_PERIOD 6 //Measured 8.78 & 16.0. 8on & 16off produced actual 10.05 on & 19.10 off
-#define SONY_OFF_PERIOD 13
+#define SONY_ON_PERIOD 8 //Measured 8.78 & 16.0. 8on & 16off produced actual 10.05 on & 19.10 off
+#define SONY_OFF_PERIOD 16
 
 /*GEWA patterns
  *Starts at MSB. 0b1 == pulsing on, 0b0 == pulsing off. Fill rest with zeros.
