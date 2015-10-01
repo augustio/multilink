@@ -202,7 +202,9 @@ static void advertising_init(void)
 
 	/* Manufacturer's own data begins */
 
-	data.size = 0;
+	data.size = 2;
+	data.p_data[0] = 0xA1;
+	data.p_data[1] = 0x05;
 
 	adv_manuf_data.company_identifier = COMPANY_IDENTIFIER;
 	adv_manuf_data.data = data;
