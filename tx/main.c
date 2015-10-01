@@ -17,6 +17,7 @@
 #include "vibrate.h"
 #include "gesture.h"
 #include "action.h"
+#include "common.h"
 
 #define APP_GPIOTE_MAX_USERS 2
 
@@ -33,8 +34,6 @@
 #define SEC_PARAM_OOB              0                                  /**< Out Of Band data not available. */
 #define SEC_PARAM_MIN_KEY_SIZE     7                                  /**< Minimum encryption key size. */
 #define SEC_PARAM_MAX_KEY_SIZE     16                                 /**< Maximum encryption key size. */
-
-#define TARGET_DEVICE_NAME "Electria_receiver"
 
 #define MULTILINK_PERIPHERAL_BASE_UUID     {{0xB3, 0x58, 0x55, 0x40, 0x50, 0x60, 0x11, \
 						0xe3, 0x8f, 0x96, 0x08, 0x00, 0x00, 0x00,   \

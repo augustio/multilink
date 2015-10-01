@@ -11,12 +11,13 @@
 #include "IRLED_cntrl.h"
 
 #include "action.h"
+#include "common.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0
 #define APP_ADV_INTERVAL                   MSEC_TO_UNITS(50, UNIT_0_625_MS)
 #define APP_ADV_TIMEOUT_IN_SECONDS         0
 
-#define DEVICE_NAME "Electria_receiver"
+#define DEVICE_NAME TARGET_DEVICE_NAME
 #define MIN_CONN_INTERVAL                  MSEC_TO_UNITS(500, UNIT_1_25_MS)           /**< Minimum acceptable connection interval (0.5 seconds). */
 #define MAX_CONN_INTERVAL                  MSEC_TO_UNITS(1000, UNIT_1_25_MS)          /**< Maximum acceptable connection interval (1 second). */
 #define SLAVE_LATENCY                      0                                          /**< Slave latency. */
