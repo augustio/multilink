@@ -377,7 +377,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 		data_t adv_data;
 		data_t type_data;
 
-#if 0
+#if 1
 		int i;
 		for (i = 0; i < p_ble_evt->evt.gap_evt.params.adv_report.dlen; i++) {
 			char buf[8];

@@ -29,6 +29,8 @@
 #define MULTILINK_PERIPHERAL_SERVICE_UUID  0x9001
 #define MULTILINK_PERIPHERAL_CHAR_UUID     0x900A
 
+#define COMPANY_IDENTIFIER 0xDADA
+
 #define RX_GREEN_LED_PIN (8)
 
 #define ADV_BLINKING
@@ -185,6 +187,9 @@ static void advertising_init(void)
 	ble_advdata_t advdata;
 	ble_adv_modes_config_t options = {0};
 
+	ble_advdata_manuf_data_t adv_manuf_data;
+	uint8_array_t data;
+
 	memset(&advdata, 0, sizeof(advdata));
 
 	advdata.name_type               = BLE_ADVDATA_FULL_NAME;
@@ -194,6 +199,17 @@ static void advertising_init(void)
 	options.ble_adv_fast_enabled  = BLE_ADV_FAST_ENABLED;
 	options.ble_adv_fast_interval = APP_ADV_INTERVAL;
 	options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
+
+	/* Manufacturer's own data begins */
+
+	data.size = 0;
+
+	adv_manuf_data.company_identifier = COMPANY_IDENTIFIER;
+	adv_manuf_data.data = data;
+
+	advdata.p_manuf_specific_data = &adv_manuf_data;
+
+	/* Manufacturer's own data ends */
 
 	err_code = ble_advertising_init(&advdata, NULL, &options, on_adv_evt, NULL);
 	APP_ERROR_CHECK(err_code);
