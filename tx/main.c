@@ -63,7 +63,11 @@ static uint8_t m_device_count;
 
 typedef struct {
 	ble_gap_addr_t peer_addr;
-	int8_t         rssi;
+	int8_t		rssi;
+	uint8_t		room_id;
+	uint8_t		rx_id;
+	bool		primary_continuous;
+	uint8_t		device_commands;
 } electria_device_t;
 
 static electria_device_t device_list[MAX_DEVICE_COUNT];
@@ -415,11 +419,20 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 
 				if (STATE_RX_GATHER == global_state) {
 					if (m_device_count < MAX_DEVICE_COUNT && !is_address_in_table(&p_gap_evt->params.adv_report.peer_addr)) {
-						char buf[48];
+						char buf[64];
 						device_list[m_device_count].rssi = p_gap_evt->params.adv_report.rssi;
 						device_list[m_device_count].peer_addr = p_gap_evt->params.adv_report.peer_addr;
+						device_list[m_device_count].room_id = (rx_properties.p_data[2] >> 4) & 0x0F;
+						device_list[m_device_count].rx_id = rx_properties.p_data[2] & 0x0F;
+						device_list[m_device_count].primary_continuous = (rx_properties.p_data[3] >> 4) & 0x0F;
+						device_list[m_device_count].device_commands = rx_properties.p_data[3] & 0x0F;
 						m_device_count++;
-						sprintf(buf, "Total device count: %d\r\n", m_device_count);
+						sprintf(buf, "Total device count: %d room_id %x rx_id %x PC %x DC %x\r\n",
+											device_list[m_device_count - 1].room_id,
+										       	device_list[m_device_count - 1].rx_id,
+										       	device_list[m_device_count - 1].primary_continuous,
+											device_list[m_device_count - 1].device_commands,
+											m_device_count);
 						simple_uart_putstring((const uint8_t *)buf);
 					}
 					qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
