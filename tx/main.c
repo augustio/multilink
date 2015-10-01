@@ -100,6 +100,7 @@ enum {
 
 static bool double_tap_occurred = false;
 static bool scan_timeout_occurred = false;
+static bool arm_up_occurred = false;
 static bool memory_access_in_progress = false;
 static bool vibrating = false;
 static bool is_connected = false;
@@ -220,22 +221,7 @@ static void polling_timer_handler(void *p_context)
 
 	case ACTION_ARM_UP:
 		simple_uart_putstring((const uint8_t *)"UP\r\n");
-		if (STATE_RX_SELECT == global_state) {
-			simple_uart_putstring((const uint8_t *)"RX SELECTED\r\n");
-			do_vibrate(VIBRATE_DURATION_SHORT,
-					VIBRATE_PAUSE_DURATION_NORMAL,
-					&vibrating);
-
-			if (get_rx_number_of_commands() == 5)
-				gyroEnable();
-
-			global_state = STATE_RX_CONTROL;
-		} else if (STATE_RX_CONTROL == global_state) {
-			send_data(ACTION_ARM_UP);
-			do_vibrate(VIBRATE_DURATION_SHORT,
-					VIBRATE_PAUSE_DURATION_NORMAL,
-					&vibrating);
-		}
+		arm_up_occurred = true;
 	break;
 
 	case ACTION_ROTATION_CCW:
@@ -961,6 +947,26 @@ int main(void)
 				simple_uart_putstring((const uint8_t *)"STATE CHANGE->SLEEP\r\n");
 				do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 						VIBRATE_PAUSE_DURATION_SHORT,
+						&vibrating);
+			}
+		}
+
+		if (arm_up_occurred) {
+			arm_up_occurred = false;
+			if (STATE_RX_SELECT == global_state) {
+				simple_uart_putstring((const uint8_t *)"RX SELECTED\r\n");
+				do_vibrate(VIBRATE_DURATION_SHORT,
+						VIBRATE_PAUSE_DURATION_NORMAL,
+						&vibrating);
+
+				if (get_rx_number_of_commands() == 5)
+					gyroEnable();
+
+				global_state = STATE_RX_CONTROL;
+			} else if (STATE_RX_CONTROL == global_state) {
+				send_data(ACTION_ARM_UP);
+				do_vibrate(VIBRATE_DURATION_SHORT,
+						VIBRATE_PAUSE_DURATION_NORMAL,
 						&vibrating);
 			}
 		}
