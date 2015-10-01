@@ -54,10 +54,6 @@ static const ble_gap_conn_params_t m_connection_param =
 };
 
 
-static bool memory_access_in_progress = false;
-static bool vibrating = false;
-static bool is_connecting = false;
-
 static dm_application_instance_t    m_dm_app_id;
 static uint8_t   m_base_uuid_type;
 static uint16_t m_conn_handle;
@@ -103,7 +99,11 @@ enum {
 } global_state ;
 
 static bool double_tap_occurred = false;
+static bool scan_timeout_occurred = false;
+static bool memory_access_in_progress = false;
+static bool vibrating = false;
 static bool is_connected = false;
+static bool is_connecting = false;
 
 enum {
 	ORIENTATION_UNDEFINED = -1,
@@ -513,27 +513,7 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	case BLE_GAP_EVT_TIMEOUT:
 		if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
 			simple_uart_putstring((const uint8_t *)"Scan timeout\r\n");
-			if (STATE_RX_GATHER == global_state) {
-				if (m_device_count) {
-					target_addr = device_list[0].peer_addr;
-					global_state = STATE_RX_CHANGE;
-					simple_uart_putstring((const uint8_t *)"STATE GATHER->CHANGE\r\n");
-					scan_start();
-				} else {
-					simple_uart_putstring((const uint8_t *)"STATE GATHER->SLEEP\r\n");
-					global_state = STATE_SLEEP;
-					do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
-							VIBRATE_PAUSE_DURATION_SHORT,
-							&vibrating);
-				}
-			} else if (STATE_RX_CHANGE == global_state &&
-					!is_connecting) {
-					global_state = STATE_SLEEP;
-					simple_uart_putstring((const uint8_t *)"STATE CHANGE->SLEEP\r\n");
-					do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
-							VIBRATE_PAUSE_DURATION_SHORT,
-							&vibrating);
-			}
+			scan_timeout_occurred = true; 
 		}
 		else if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
 			simple_uart_putstring((const uint8_t *)"Conn request timeout\r\n");
@@ -957,6 +937,31 @@ int main(void)
 							BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 					APP_ERROR_CHECK(err_code);
 				}
+			}
+		}
+
+		if (scan_timeout_occurred) {
+			scan_timeout_occurred = false;
+			if (STATE_RX_GATHER == global_state) {
+				if (m_device_count) {
+					target_addr = device_list[0].peer_addr;
+					global_state = STATE_RX_CHANGE;
+					simple_uart_putstring((const uint8_t *)"STATE GATHER->CHANGE\r\n");
+					scan_start();
+				} else {
+					simple_uart_putstring((const uint8_t *)"STATE GATHER->SLEEP\r\n");
+					global_state = STATE_SLEEP;
+					do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
+							VIBRATE_PAUSE_DURATION_SHORT,
+							&vibrating);
+				}
+			} else if (STATE_RX_CHANGE == global_state &&
+					!is_connecting) {
+				global_state = STATE_SLEEP;
+				simple_uart_putstring((const uint8_t *)"STATE CHANGE->SLEEP\r\n");
+				do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
+						VIBRATE_PAUSE_DURATION_SHORT,
+						&vibrating);
 			}
 		}
 		power_manage();
