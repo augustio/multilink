@@ -208,7 +208,7 @@ static void send_data(uint8_t data)
 
 static uint8_t get_rx_number_of_commands()
 {
-	return 5;
+	return device_list[current_target].device_commands;
 }
 
 static void polling_timer_handler(void *p_context)
