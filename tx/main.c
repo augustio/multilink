@@ -105,6 +105,7 @@ static bool double_tap_occurred = false;
 static bool scan_timeout_occurred = false;
 static bool arm_up_occurred = false;
 static bool arm_down_occurred = false;
+
 static bool memory_access_in_progress = false;
 static bool vibrating = false;
 static bool is_connected = false;
@@ -252,20 +253,24 @@ static void polling_timer_handler(void *p_context)
 
 	case ACTION_SWIPE_RIGHT:
 		simple_uart_putstring((const uint8_t *)"RIGHT\r\n");
-		send_data(ACTION_SWIPE_RIGHT);
+		if (STATE_RX_CONTROL == global_state) {
+			send_data(ACTION_SWIPE_RIGHT);
 
-		do_vibrate(VIBRATE_DURATION_LONG,
-				VIBRATE_PAUSE_DURATION_EXTRA_LONG,
-				&vibrating);
+			do_vibrate(VIBRATE_DURATION_SHORT,
+					VIBRATE_PAUSE_DURATION_EXTRA_LONG,
+					&vibrating);
+		}
 	break;
 
 	case ACTION_SWIPE_LEFT:
 		simple_uart_putstring((const uint8_t *)"LEFT\r\n");
-		send_data(ACTION_SWIPE_LEFT);
+		if (STATE_RX_CONTROL == global_state) {
+			send_data(ACTION_SWIPE_LEFT);
 
-		do_vibrate(VIBRATE_DURATION_LONG,
+			do_vibrate(VIBRATE_DURATION_SHORT,
 				VIBRATE_PAUSE_DURATION_EXTRA_LONG,
 				&vibrating);
+		}
 	break;
 
 	default:
@@ -884,6 +889,7 @@ static bool is_multiple_rooms(void)
 
 static uint8_t get_best_rx_next_room()
 {
+	// FIXME
 	return 0;
 }
 
