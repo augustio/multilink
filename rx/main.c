@@ -188,8 +188,8 @@ static void advertising_init(void)
 	ble_advdata_t advdata;
 	ble_adv_modes_config_t options = {0};
 
-	ble_advdata_manuf_data_t adv_manuf_data;
-	uint8_array_t data;
+	ble_advdata_manuf_data_t manuf_data;
+	static uint8_t data_data[2] = {0xA1, 0x05};
 
 	memset(&advdata, 0, sizeof(advdata));
 
@@ -203,14 +203,11 @@ static void advertising_init(void)
 
 	/* Manufacturer's own data begins */
 
-	data.size = 2;
-	data.p_data[0] = 0xA1;
-	data.p_data[1] = 0x05;
+	manuf_data.company_identifier = COMPANY_IDENTIFIER;
+	manuf_data.data.size = 2;
+	manuf_data.data.p_data = data_data;
 
-	adv_manuf_data.company_identifier = COMPANY_IDENTIFIER;
-	adv_manuf_data.data = data;
-
-	advdata.p_manuf_specific_data = &adv_manuf_data;
+	advdata.p_manuf_specific_data = &manuf_data;
 
 	/* Manufacturer's own data ends */
 
