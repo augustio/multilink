@@ -101,6 +101,7 @@ enum {
 static bool double_tap_occurred = false;
 static bool scan_timeout_occurred = false;
 static bool arm_up_occurred = false;
+static bool arm_down_occurred = false;
 static bool memory_access_in_progress = false;
 static bool vibrating = false;
 static bool is_connected = false;
@@ -212,8 +213,6 @@ static void polling_timer_handler(void *p_context)
 	if (vibrating)
 		return;
 
-	uint32_t err_code;
-
 	switch (getAction()) {
 
 	case ACTION_NO_ACTION:
@@ -244,17 +243,8 @@ static void polling_timer_handler(void *p_context)
 
 	case ACTION_ARM_DOWN:
 		simple_uart_putstring((const uint8_t *)"DOWN\r\n");
+		arm_down_occurred = true;
 
-		err_code = app_timer_stop(m_polling_timer);
-		APP_ERROR_CHECK(err_code);
-
-		if (isGyroEnabled())
-			gyroDisable();
-
-		global_state = STATE_SLEEP;
-		err_code = sd_ble_gap_disconnect(m_conn_handle,
-				BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-		APP_ERROR_CHECK(err_code);
 	break;
 
 	case ACTION_SWIPE_RIGHT:
@@ -902,6 +892,7 @@ int main(void)
 	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
 	while (1) {
+		uint32_t err_code;
 		if (double_tap_occurred) {
 			double_tap_occurred = false;
 			if (STATE_SLEEP == global_state) {
@@ -915,7 +906,6 @@ int main(void)
 					is_multiple_rooms()) {
 				global_state = STATE_RX_CHANGE;
 				if (is_connected) {
-					uint32_t err_code;
 					err_code = app_timer_stop(m_polling_timer);
 					APP_ERROR_CHECK(err_code);
 					target_addr = get_best_rx_next_room();
@@ -969,6 +959,20 @@ int main(void)
 						VIBRATE_PAUSE_DURATION_NORMAL,
 						&vibrating);
 			}
+		}
+
+		if (arm_down_occurred) {
+			arm_down_occurred = false;
+			err_code = app_timer_stop(m_polling_timer);
+			APP_ERROR_CHECK(err_code);
+
+			if (isGyroEnabled())
+				gyroDisable();
+
+			global_state = STATE_SLEEP;
+			err_code = sd_ble_gap_disconnect(m_conn_handle,
+					BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+			APP_ERROR_CHECK(err_code);
 		}
 		power_manage();
 	}
