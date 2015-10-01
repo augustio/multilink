@@ -887,6 +887,47 @@ static uint8_t get_best_rx_next_room()
 	return 0;
 }
 
+static uint8_t get_next_rx_in_room(void)
+{
+	uint8_t i;
+	uint8_t current_room = device_list[current_target].room_id;
+
+	for (i = current_target + 1; i < m_device_count; i++) {
+		if (device_list[current_target].room_id == current_room)
+			return i;
+	}
+
+	/* Still not found, search from the beginning of the list */
+
+	for (i = 0; i < current_target; i++) {
+		if (device_list[current_target].room_id == current_room)
+			return i;
+	}
+
+	/* If nothing else, just stay where we were */
+	return current_target;
+}
+
+static uint8_t get_previous_rx_in_room(void)
+{
+	uint8_t i;
+	uint8_t current_room = device_list[current_target].room_id;
+
+	for (i = current_target - 1; i >=0; i--) {
+		if (device_list[current_target].room_id == current_room)
+			return i;
+	}
+
+	/* Still not found, search from the end of the list */
+
+	for (i = m_device_count - 1; i > current_target; i--)
+		if (device_list[current_target].room_id == current_room)
+			return i;
+
+	/* If nothing else, just stay where we were */
+	return current_target;
+}
+
 static bool is_multiple_rx_current_room(void)
 {
 	int i;
@@ -1020,6 +1061,16 @@ int main(void)
 				do_vibrate(VIBRATE_DURATION_SHORT,
 						VIBRATE_PAUSE_DURATION_NORMAL,
 						&vibrating);
+			} else if (is_multiple_rx_current_room() && STATE_RX_SELECT == global_state) {
+				global_state = STATE_RX_CHANGE;
+				if (is_connected) {
+					err_code = app_timer_stop(m_polling_timer);
+					APP_ERROR_CHECK(err_code);
+					current_target = get_next_rx_in_room();
+					err_code = sd_ble_gap_disconnect(m_conn_handle,
+							BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+					APP_ERROR_CHECK(err_code);
+				}
 			}
 		}
 
@@ -1031,7 +1082,18 @@ int main(void)
 				do_vibrate(VIBRATE_DURATION_SHORT,
 						VIBRATE_PAUSE_DURATION_NORMAL,
 						&vibrating);
+			} else if (is_multiple_rx_current_room() && STATE_RX_SELECT == global_state) {
+				global_state = STATE_RX_CHANGE;
+				if (is_connected) {
+					err_code = app_timer_stop(m_polling_timer);
+					APP_ERROR_CHECK(err_code);
+					current_target = get_previous_rx_in_room();
+					err_code = sd_ble_gap_disconnect(m_conn_handle,
+							BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+					APP_ERROR_CHECK(err_code);
+				}
 			}
+
 		}
 
 		power_manage();
