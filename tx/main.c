@@ -71,7 +71,7 @@ typedef struct {
 } electria_device_t;
 
 static electria_device_t device_list[MAX_DEVICE_COUNT];
-static ble_gap_addr_t target_addr;
+static uint8_t current_target;
 
 #define APP_TIMER_PRESCALER	0
 #define APP_TIMER_MAX_TIMERS	8
@@ -436,9 +436,9 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 						simple_uart_putstring((const uint8_t *)buf);
 					}
 					qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
-				} else if (STATE_RX_CHANGE == global_state && !is_connecting && is_same_peer_addr(&target_addr, &p_gap_evt->params.adv_report.peer_addr)) {
+				} else if (STATE_RX_CHANGE == global_state && !is_connecting && is_same_peer_addr(&device_list[current_target].peer_addr, &p_gap_evt->params.adv_report.peer_addr)) {
 
-					err_code = sd_ble_gap_connect(&target_addr,
+					err_code = sd_ble_gap_connect(&device_list[current_target].peer_addr,
 							&m_scan_param,
 							&m_connection_param);
 
@@ -882,9 +882,9 @@ static bool is_multiple_rooms(void)
 	return true;
 }
 
-static ble_gap_addr_t get_best_rx_next_room(void)
+static uint8_t get_best_rx_next_room()
 {
-	return device_list[0].peer_addr;
+	return 0;
 }
 
 int main(void)
@@ -927,7 +927,7 @@ int main(void)
 				if (is_connected) {
 					err_code = app_timer_stop(m_polling_timer);
 					APP_ERROR_CHECK(err_code);
-					target_addr = get_best_rx_next_room();
+					current_target = get_best_rx_next_room();
 					err_code = sd_ble_gap_disconnect(m_conn_handle,
 							BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 					APP_ERROR_CHECK(err_code);
@@ -939,7 +939,7 @@ int main(void)
 			scan_timeout_occurred = false;
 			if (STATE_RX_GATHER == global_state) {
 				if (m_device_count) {
-					target_addr = device_list[0].peer_addr;
+					current_target = 0;
 					global_state = STATE_RX_CHANGE;
 					simple_uart_putstring((const uint8_t *)"STATE GATHER->CHANGE\r\n");
 					scan_start();
