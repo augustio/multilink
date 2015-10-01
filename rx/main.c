@@ -32,6 +32,11 @@
 
 #define COMPANY_IDENTIFIER 0xDADA
 
+#define ROOM_ID 0xA
+#define DEVICE_ID 0x1
+#define PRIMARY_CONTINUOUS 0
+#define DEVICE_COMMANDS 5
+
 #define RX_GREEN_LED_PIN (8)
 
 #define ADV_BLINKING
@@ -202,6 +207,9 @@ static void advertising_init(void)
 	options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
 
 	/* Manufacturer's own data begins */
+
+	data_data[0] = (ROOM_ID << 4) | DEVICE_ID;
+	data_data[1] = (PRIMARY_CONTINUOUS << 4) | DEVICE_COMMANDS;
 
 	manuf_data.company_identifier = COMPANY_IDENTIFIER;
 	manuf_data.data.size = 2;
