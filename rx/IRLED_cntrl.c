@@ -328,8 +328,8 @@ uint32_t Sony_control(uint16_t cmd)
 	nrf_gpio_cfg_output(IRLED_PIN);
 	nrf_gpio_pin_clear(IRLED_PIN);
 	
-	int compensated_off_period = SONY_OFF_PERIOD+3;
-	int compensated_on_period = SONY_ON_PERIOD+2;
+	int compensated_off_period = SONY_OFF_PERIOD;	//+3;
+	int compensated_on_period = SONY_ON_PERIOD;	//+2;
 	//Auto-adjust in case you want to change on/off timings
 	/* int n_pulses_pa = (2370 + SONY_OFF_PERIOD) / (SONY_ON_PERIOD+SONY_OFF_PERIOD); //Target == 2370us
 	int n_pulses_sb = (582 + SONY_OFF_PERIOD) / (SONY_ON_PERIOD+ SONY_OFF_PERIOD); //Target == 582 us

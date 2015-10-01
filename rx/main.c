@@ -11,12 +11,13 @@
 #include "IRLED_cntrl.h"
 
 #include "action.h"
+#include "common.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0
 #define APP_ADV_INTERVAL                   MSEC_TO_UNITS(50, UNIT_0_625_MS)
 #define APP_ADV_TIMEOUT_IN_SECONDS         0
 
-#define DEVICE_NAME "Electria_receiver"
+#define DEVICE_NAME TARGET_DEVICE_NAME
 #define MIN_CONN_INTERVAL                  MSEC_TO_UNITS(500, UNIT_1_25_MS)           /**< Minimum acceptable connection interval (0.5 seconds). */
 #define MAX_CONN_INTERVAL                  MSEC_TO_UNITS(1000, UNIT_1_25_MS)          /**< Maximum acceptable connection interval (1 second). */
 #define SLAVE_LATENCY                      0                                          /**< Slave latency. */
@@ -187,8 +188,8 @@ static void advertising_init(void)
 	ble_advdata_t advdata;
 	ble_adv_modes_config_t options = {0};
 
-	ble_advdata_manuf_data_t adv_manuf_data;
-	uint8_array_t data;
+	ble_advdata_manuf_data_t manuf_data;
+	static uint8_t data_data[2] = {0xA1, 0x05};
 
 	memset(&advdata, 0, sizeof(advdata));
 
@@ -202,14 +203,11 @@ static void advertising_init(void)
 
 	/* Manufacturer's own data begins */
 
-	data.size = 2;
-	data.p_data[0] = 0xA1;
-	data.p_data[1] = 0x05;
+	manuf_data.company_identifier = COMPANY_IDENTIFIER;
+	manuf_data.data.size = 2;
+	manuf_data.data.p_data = data_data;
 
-	adv_manuf_data.company_identifier = COMPANY_IDENTIFIER;
-	adv_manuf_data.data = data;
-
-	advdata.p_manuf_specific_data = &adv_manuf_data;
+	advdata.p_manuf_specific_data = &manuf_data;
 
 	/* Manufacturer's own data ends */
 
