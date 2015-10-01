@@ -376,19 +376,26 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 		uint32_t err_code;
 		data_t adv_data;
 		data_t type_data;
+		data_t rx_properties;
 
+		adv_data.p_data = (uint8_t *)p_ble_evt->evt.gap_evt.params.adv_report.data;
+		adv_data.data_len = p_gap_evt->params.adv_report.dlen;
+
+		err_code = adv_report_parse(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, &adv_data, &rx_properties);
+		if (err_code != NRF_SUCCESS) {
+			simple_uart_putstring((const uint8_t *)"No device properties found, can't proceed\r\n");
+			return;
+		}
 #if 1
 		int i;
-		for (i = 0; i < p_ble_evt->evt.gap_evt.params.adv_report.dlen; i++) {
+		for (i = 0; i < rx_properties.data_len; i++) {
 			char buf[8];
-			sprintf(buf, "%x ", p_ble_evt->evt.gap_evt.params.adv_report.data[i]);
+			sprintf(buf, "%x ", rx_properties.p_data[i]);
 			simple_uart_putstring((const uint8_t *)buf);
 		}
 
 		simple_uart_putstring((const uint8_t *)"\r\n");
 #endif
-		adv_data.p_data = (uint8_t *)p_ble_evt->evt.gap_evt.params.adv_report.data;
-		adv_data.data_len = p_gap_evt->params.adv_report.dlen;
 
 		/* If we want to detect our target device using something else than the local name,
 		 * change the first argument to that type of data that you are looking for, and
