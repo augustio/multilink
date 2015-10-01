@@ -105,6 +105,8 @@ static bool double_tap_occurred = false;
 static bool scan_timeout_occurred = false;
 static bool arm_up_occurred = false;
 static bool arm_down_occurred = false;
+static bool cw_rotation_occurred = false;
+static bool ccw_rotation_occurred = false;
 
 static bool memory_access_in_progress = false;
 static bool vibrating = false;
@@ -228,21 +230,13 @@ static void polling_timer_handler(void *p_context)
 	break;
 
 	case ACTION_ROTATION_CCW:
+		ccw_rotation_occurred = true;
 		simple_uart_putstring((const uint8_t *)"CCW\r\n");
-		send_data(ACTION_ROTATION_CCW);
-
-		do_vibrate(VIBRATE_DURATION_SHORT,
-				VIBRATE_PAUSE_DURATION_NORMAL,
-				&vibrating);
 	break;
 
 	case ACTION_ROTATION_CW:
+		cw_rotation_occurred = true;
 		simple_uart_putstring((const uint8_t *)"CW\r\n");
-		send_data(ACTION_ROTATION_CW);
-
-		do_vibrate(VIBRATE_DURATION_SHORT,
-				VIBRATE_PAUSE_DURATION_NORMAL,
-				&vibrating);
 	break;
 
 	case ACTION_ARM_DOWN:
@@ -999,6 +993,29 @@ int main(void)
 					BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 			APP_ERROR_CHECK(err_code);
 		}
+
+		if (cw_rotation_occurred) {
+			cw_rotation_occurred = false;
+			if (STATE_RX_CONTROL == global_state) {
+				send_data(ACTION_ROTATION_CW);
+
+				do_vibrate(VIBRATE_DURATION_SHORT,
+						VIBRATE_PAUSE_DURATION_NORMAL,
+						&vibrating);
+			}
+		}
+
+		if (ccw_rotation_occurred) {
+			ccw_rotation_occurred = false;
+			if (STATE_RX_CONTROL == global_state) {
+				send_data(ACTION_ROTATION_CCW);
+
+				do_vibrate(VIBRATE_DURATION_SHORT,
+						VIBRATE_PAUSE_DURATION_NORMAL,
+						&vibrating);
+			}
+		}
+
 		power_manage();
 	}
 
