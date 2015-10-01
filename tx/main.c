@@ -428,11 +428,11 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 						device_list[m_device_count].device_commands = rx_properties.p_data[3] & 0x0F;
 						m_device_count++;
 						sprintf(buf, "Total device count: %d room_id %x rx_id %x PC %x DC %x\r\n",
+											m_device_count,
 											device_list[m_device_count - 1].room_id,
 										       	device_list[m_device_count - 1].rx_id,
 										       	device_list[m_device_count - 1].primary_continuous,
-											device_list[m_device_count - 1].device_commands,
-											m_device_count);
+											device_list[m_device_count - 1].device_commands);
 						simple_uart_putstring((const uint8_t *)buf);
 					}
 					qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
