@@ -887,6 +887,24 @@ static uint8_t get_best_rx_next_room()
 	return 0;
 }
 
+static bool is_multiple_rx_current_room(void)
+{
+	int i;
+	uint8_t current_room = device_list[current_target].room_id;
+
+	for (i = 0; i < current_target; i++) {
+		if (device_list[i].room_id == current_room)
+			return true;
+	}
+
+	for (i = current_target + 1; i < m_device_count; i++) {
+		if (device_list[i].room_id == current_room)
+			return true;
+	}
+
+	return false;
+}
+
 int main(void)
 {
 	global_state = STATE_CONFIG;
