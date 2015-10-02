@@ -39,6 +39,19 @@
 
 #define RX_GREEN_LED_PIN (8)
 
+#define HIGH_SIDE_CONNECTOR_PIN_7 (9)
+#define HIGH_SIDE_CONNECTOR_PIN_8 (10)
+#define LOW_SIDE_CONNECTOR_PIN_5 (2)
+#define LOW_SIDE_CONNECTOR_PIN_4 (1)
+
+#define DOOR_PULSE_TIMER_TICKS (APP_TIMER_TICKS(500, APP_TIMER_PRESCALER))
+
+#define DEVICE_TYPE_SWITCH		(1)
+#define DEVICE_TYPE_PULSE_GENERATOR	(2)
+#define DEVICE_TYPE_MOTOR_CONTROL	(3)
+
+#define DEVICE_TYPE DEVICE_TYPE_SWITCH
+
 #define ADV_BLINKING
 //#undef ADV_BLINKING
 
@@ -88,8 +101,9 @@ static void process_data(uint8_t data)
 {
 	switch (data) {
 	case ACTION_ARM_UP:
-		JVC_control(JVC_CMD_3_C);
+//		JVC_control(JVC_CMD_3_C);
 		simple_uart_putstring((const uint8_t*) "UP\r\n");
+		nrf_gpio_pin_toggle(HIGH_SIDE_CONNECTOR_PIN_7);
 	break;
 
 	case ACTION_ROTATION_CW:
@@ -366,6 +380,10 @@ int main(void)
 
 	simple_uart_config(6, 10, 5, 4, false);
 	nrf_gpio_cfg_output(RX_GREEN_LED_PIN);
+#if ((DEVICE_TYPE == DEVICE_TYPE_SWITCH) || (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR))
+	nrf_gpio_cfg_output(HIGH_SIDE_CONNECTOR_PIN_7);
+	nrf_gpio_pin_clear(HIGH_SIDE_CONNECTOR_PIN_7);
+#endif
 
 #ifdef ADV_BLINKING
 	APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_QUEUE_SIZE, NULL);
