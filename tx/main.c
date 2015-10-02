@@ -927,14 +927,14 @@ static uint8_t get_next_rx_in_room(void)
 	uint8_t current_room = device_list[current_target].room_id;
 
 	for (i = current_target + 1; i < m_device_count; i++) {
-		if (device_list[current_target].room_id == current_room)
+		if (device_list[i].room_id == current_room)
 			return i;
 	}
 
 	/* Still not found, search from the beginning of the list */
 
 	for (i = 0; i < current_target; i++) {
-		if (device_list[current_target].room_id == current_room)
+		if (device_list[i].room_id == current_room)
 			return i;
 	}
 
@@ -947,15 +947,15 @@ static uint8_t get_previous_rx_in_room(void)
 	int8_t i;
 	uint8_t current_room = device_list[current_target].room_id;
 
-	for (i = current_target - 1; i >=0; i--) {
-		if (device_list[current_target].room_id == current_room)
+	for (i = current_target - 1; i >= 0; i--) {
+		if (device_list[i].room_id == current_room)
 			return i;
 	}
 
 	/* Still not found, search from the end of the list */
 
 	for (i = m_device_count - 1; i > current_target; i--)
-		if (device_list[current_target].room_id == current_room)
+		if (device_list[i].room_id == current_room)
 			return i;
 
 	/* Should never happen */
@@ -967,6 +967,7 @@ static bool is_multiple_rx_current_room(void)
 	int i;
 	uint8_t current_room = device_list[current_target].room_id;
 
+#if 0
 	for (i = 0; i < current_target; i++) {
 		if (device_list[i].room_id == current_room)
 			return true;
@@ -976,6 +977,11 @@ static bool is_multiple_rx_current_room(void)
 		if (device_list[i].room_id == current_room)
 			return true;
 	}
+#else
+	for (i = 0; i < m_device_count; i++)
+		if ((device_list[i].room_id == current_room) && (i != current_target))
+			return true;
+#endif
 
 	return false;
 }
