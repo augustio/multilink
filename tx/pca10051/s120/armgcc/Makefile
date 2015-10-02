@@ -46,7 +46,6 @@ $(abspath ../../../main.c) \
 $(abspath ../../../vibrate.c) \
 $(abspath ../../../gesture.c) \
 $(abspath ../../../sw_spi.c) \
-$(abspath ../../../simple_uart.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
 $(abspath ../../../../components/softdevice/common/softdevice_handler/softdevice_handler.c) \
 $(abspath ../../../../components/ble/device_manager/device_manager_central.c) \

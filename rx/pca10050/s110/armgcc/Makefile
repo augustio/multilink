@@ -38,7 +38,6 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 #source common to all targets
 C_SOURCE_FILES += \
 $(abspath ../../../main.c) \
-$(abspath ../../../simple_uart.c) \
 $(abspath ../../../IRLED_cntrl.c) \
 $(abspath ../../../../components/drivers_nrf/hal/nrf_delay.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \

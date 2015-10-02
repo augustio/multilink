@@ -8,7 +8,6 @@
 #include "ble_db_discovery.h"
 #include "app_timer.h"
 #include "app_gpiote.h"
-#include "simple_uart.h"
 #include "softdevice_handler.h"
 #include "device_manager.h"
 #include "pstorage.h"
@@ -204,13 +203,6 @@ static void send_data(uint8_t data)
 
 	err_code = sd_ble_gattc_write(handle, &write_params);
 	APP_ERROR_CHECK(err_code);
-	if (err_code != NRF_SUCCESS) {
-		char buf2[32];
-		sprintf(buf2, "DATA NOT SENT, REASON %d\r\n", (int)err_code);
-		simple_uart_putstring((const uint8_t *)buf2);
-	} else {
-		simple_uart_putstring((const uint8_t *)"sd_ble_gattc_write() SUCCESSFUL\r\n");
-	}
 }
 
 static uint8_t get_rx_number_of_commands()
@@ -229,28 +221,23 @@ static void polling_timer_handler(void *p_context)
 	break;
 
 	case ACTION_ARM_UP:
-		simple_uart_putstring((const uint8_t *)"UP\r\n");
 		arm_up_occurred = true;
 	break;
 
 	case ACTION_ROTATION_CCW:
 		ccw_rotation_occurred = true;
-		simple_uart_putstring((const uint8_t *)"CCW\r\n");
 	break;
 
 	case ACTION_ROTATION_CW:
 		cw_rotation_occurred = true;
-		simple_uart_putstring((const uint8_t *)"CW\r\n");
 	break;
 
 	case ACTION_ARM_DOWN:
-		simple_uart_putstring((const uint8_t *)"DOWN\r\n");
 		arm_down_occurred = true;
 
 	break;
 
 	case ACTION_SWIPE_RIGHT:
-		simple_uart_putstring((const uint8_t *)"RIGHT\r\n");
 		if (STATE_RX_CONTROL == global_state) {
 			send_data(ACTION_SWIPE_RIGHT);
 
@@ -261,7 +248,6 @@ static void polling_timer_handler(void *p_context)
 	break;
 
 	case ACTION_SWIPE_LEFT:
-		simple_uart_putstring((const uint8_t *)"LEFT\r\n");
 		if (STATE_RX_CONTROL == global_state) {
 			send_data(ACTION_SWIPE_LEFT);
 
@@ -272,16 +258,9 @@ static void polling_timer_handler(void *p_context)
 	break;
 
 	default:
-		simple_uart_putstring((const uint8_t *)"SHOULDN'T HAPPEN\r\n");
 	break;
 	}
 }
-
-#define CHECK_ERROR_CODE do { \
-	char buf[8]; \
-	sprintf(buf, "%d\r\n", __LINE__); \
-	simple_uart_putstring((const uint8_t*)buf); \
-} while (0);
 
 static void scan_start(void)
 {
@@ -307,9 +286,6 @@ static void scan_start(void)
 
 	err_code = sd_ble_gap_scan_start(&m_scan_param);
 	APP_ERROR_CHECK(err_code);
-
-	if (err_code != NRF_SUCCESS)
-		CHECK_ERROR_CODE;
 }
 
 static uint32_t adv_report_parse(uint8_t type, data_t *p_advdata, data_t *p_typedata)
@@ -389,19 +365,8 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 
 		err_code = adv_report_parse(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, &adv_data, &rx_properties);
 		if (err_code != NRF_SUCCESS) {
-			simple_uart_putstring((const uint8_t *)"No device properties found, can't proceed\r\n");
 			return;
 		}
-#if 1
-		int i;
-		for (i = 0; i < rx_properties.data_len; i++) {
-			char buf[8];
-			sprintf(buf, "%x ", rx_properties.p_data[i]);
-			simple_uart_putstring((const uint8_t *)buf);
-		}
-
-		simple_uart_putstring((const uint8_t *)"\r\n");
-#endif
 
 		/* If we want to detect our target device using something else than the local name,
 		 * change the first argument to that type of data that you are looking for, and
@@ -411,19 +376,11 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 		err_code = adv_report_parse(BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME, &adv_data, &type_data);
 
 		if (err_code == NRF_SUCCESS) {
-#if 0
-
-			simple_uart_putstring((const uint8_t *)"Found good data, which is \r\n");
-			sprintf(buf, "\t%s\r\n", type_data.p_data);
-			simple_uart_putstring((const uint8_t *)buf);
-#endif
 
 			if (is_our_target_device(&type_data)) {
 
 				if (STATE_RX_GATHER == global_state) {
 					if (m_device_count < MAX_DEVICE_COUNT && !is_address_in_table(&p_gap_evt->params.adv_report.peer_addr)) {
-						char buf[64];
-
 						/* Gather device properties */
 						device_list[m_device_count].rssi = p_gap_evt->params.adv_report.rssi;
 						device_list[m_device_count].peer_addr = p_gap_evt->params.adv_report.peer_addr;
@@ -436,86 +393,27 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 						room_properties[device_list[m_device_count].room_id] |= ROOM_HAS_RX;
 
 						m_device_count++;
-						sprintf(buf, "Total device count: %d room_id %x rx_id %x PC %x DC %x\r\n",
-											m_device_count,
-											device_list[m_device_count - 1].room_id,
-										       	device_list[m_device_count - 1].rx_id,
-										       	device_list[m_device_count - 1].primary_continuous,
-											device_list[m_device_count - 1].device_commands);
-						simple_uart_putstring((const uint8_t *)buf);
 					}
 					qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
 				} else if (STATE_RX_CHANGE == global_state && !is_connecting && is_same_peer_addr(&device_list[current_target].peer_addr, &p_gap_evt->params.adv_report.peer_addr)) {
 
 					err_code = sd_ble_gap_scan_stop();
-					if (err_code != NRF_SUCCESS) {
-						char buf[16];
-						sprintf(buf, "Force-stopped scan failed %d\r\n", (unsigned int)err_code);
-						simple_uart_putstring((const uint8_t *)buf);
-					}
+					APP_ERROR_CHECK(err_code);
 
 					err_code = sd_ble_gap_connect(&device_list[current_target].peer_addr,
 							&m_scan_param,
 							&m_connection_param);
 
 					if (err_code != NRF_SUCCESS) {
-						char buf[8];
-						simple_uart_putstring((const uint8_t *)"Connection failed. Reason: ");
-						sprintf(buf, "0x%x\r\n", (unsigned int)err_code);
-						simple_uart_putstring((const uint8_t *)buf);
 						global_state = STATE_SLEEP;
 						do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 								VIBRATE_PAUSE_DURATION_SHORT,
 								&vibrating);
 					} else {
 						is_connecting = true;
-						simple_uart_putstring((const uint8_t *)"Started connection process. Please check the RX console now.\r\n");
 					}
 
 				}
-
-
-#if 0
-				{
-					for (i = 0; i < m_device_count; i++) {
-						sprintf(buf, "dev[%d] %02x:%02x:%02x:%02x:%02x:%02x rssi = %d\n\r",
-								i,
-								device_list[i].peer_addr.addr[0],
-								device_list[i].peer_addr.addr[1],
-								device_list[i].peer_addr.addr[2],
-								device_list[i].peer_addr.addr[3],
-								device_list[i].peer_addr.addr[4],
-								device_list[i].peer_addr.addr[5],
-								device_list[i].rssi);
-						simple_uart_putstring((const uint8_t *)buf);
-					}
-
-				}
-
-				if (!in_connection) {
-					simple_uart_putstring((const uint8_t *)"Not yet in connection, go connect\r\n");
-					// not yet in connection, go connect
-					in_connection = true;
-
-#if 0
-					err_code = sd_ble_gap_connect(&p_gap_evt->params.adv_report.peer_addr,
-#else
-					err_code = sd_ble_gap_connect(&device_list[0].peer_addr,
-#endif
-									&m_scan_param,
-									&m_connection_param);
-
-					if (err_code != NRF_SUCCESS) {
-						simple_uart_putstring((const uint8_t *)"Connection failed. Reason: ");
-						sprintf(buf, "0x%x\r\n", (unsigned int)err_code);
-						simple_uart_putstring((const uint8_t *)buf);
-						in_connection = false;
-					} else {
-						simple_uart_putstring((const uint8_t *)"Connected. Please check the RX console now.\r\n");
-					}
-
-				}
-#endif
 			}
 		}
 
@@ -523,11 +421,9 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	break;
 	case BLE_GAP_EVT_TIMEOUT:
 		if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_SCAN) {
-			simple_uart_putstring((const uint8_t *)"Scan timeout\r\n");
 			scan_timeout_occurred = true; 
 		}
 		else if (p_gap_evt->params.timeout.src == BLE_GAP_TIMEOUT_SRC_CONN) {
-			simple_uart_putstring((const uint8_t *)"Conn request timeout\r\n");
 		}
 	break;
 	}
@@ -537,16 +433,9 @@ static void client_handling_ble_evt_handler(ble_evt_t *p_ble_evt)
 {
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GATTC_EVT_WRITE_RSP:
-		simple_uart_putstring((const uint8_t*)"BLE_GATTC_EVT_WRITE_RSP\r\n");
-		{
-			char buf[32];
-			sprintf(buf, "WRITE_RSP: status = 0x%hx\r\n", p_ble_evt->evt.gattc_evt.gatt_status);
-			simple_uart_putstring((const uint8_t*)buf);
-		}
 	break;
 
 	case BLE_GATTC_EVT_HVX:
-		simple_uart_putstring((const uint8_t*)"BLE_GATTC_EVT_HVX\r\n");
 	break;
 
 	case BLE_GATTC_EVT_TIMEOUT:
@@ -605,18 +494,12 @@ static void ble_stack_init()
 
 	err_code = sd_ble_enable(&ble_enable_params);
 	APP_ERROR_CHECK(err_code);
-	if (err_code != NRF_SUCCESS)
-		CHECK_ERROR_CODE;
 
 	err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
 	APP_ERROR_CHECK(err_code);
-	if (err_code != NRF_SUCCESS)
-		CHECK_ERROR_CODE;
 
 	err_code = softdevice_sys_evt_handler_set(sys_evt_dispatch);
 	APP_ERROR_CHECK(err_code);
-	if (err_code != NRF_SUCCESS)
-		CHECK_ERROR_CODE;
 }
 
 static void power_manage(void)
@@ -627,7 +510,7 @@ static void power_manage(void)
 
 static void gpiote_init(void)
 {
-	nrf_gpio_cfg_input(IMU_DOUBLE_TAP_PIN, NRF_GPIO_PIN_PULLUP);
+	nrf_gpio_cfg_input(IMU_DOUBLE_TAP_PIN, NRF_GPIO_PIN_PULLDOWN);
 	APP_GPIOTE_INIT(APP_GPIOTE_MAX_USERS);
 }
 
@@ -637,11 +520,9 @@ static void gpiote_event_handler(uint32_t lth, uint32_t htl)
 		return;
 
 	if (lth)
-		simple_uart_putstring((const uint8_t *)"LTH\r\n");
+		double_tap_occurred = true;
 
 	if (htl) {
-		simple_uart_putstring((const uint8_t *)"HTL\r\n");
-		double_tap_occurred = true;
 	}
 }
 
@@ -649,16 +530,14 @@ static void gpiote_start(void)
 {
 	uint32_t err_code;
 	err_code = app_gpiote_user_register(&m_gpiote_user_id,
-						0,
+						1 << IMU_DOUBLE_TAP_PIN,
 						1 << IMU_DOUBLE_TAP_PIN,
 						gpiote_event_handler);
 	if (err_code != NRF_SUCCESS) {
-		simple_uart_putstring((const uint8_t *)"Could not register with GPIOTE\r\n");
 	}
 
 	err_code = app_gpiote_user_enable(m_gpiote_user_id);
 	if (err_code != NRF_SUCCESS) {
-		simple_uart_putstring((const uint8_t *)"Could not enable GPIOTE\r\n");
 	}
 }
 
@@ -667,18 +546,11 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 						const ret_code_t  event_result)
 {
 	switch (p_event->event_id) {
-	char buf[32];
 	uint32_t err_code;
 	case DM_EVT_CONNECTION:
 	{
-		ble_gap_addr_t *peer_addr = &p_event->event_param.p_gap_param->params.connected.peer_addr;
+		//ble_gap_addr_t *peer_addr = &p_event->event_param.p_gap_param->params.connected.peer_addr;
 
-		sprintf(buf, "%02X %02X %02X %02X %02X %02X\r\n",
-			peer_addr->addr[0], peer_addr->addr[1], peer_addr->addr[2],
-			peer_addr->addr[3], peer_addr->addr[4], peer_addr->addr[5]);
-
-		simple_uart_putstring((const uint8_t *)"Connected to ");
-		simple_uart_putstring((const uint8_t *)buf);
 
 		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
 		m_dm_device_handle = (*p_handle);
@@ -743,11 +615,9 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 	break;
 
 	case DM_EVT_SECURITY_SETUP:
-		simple_uart_putstring((const uint8_t *)"DM_EVT_SECURITY_SETUP\r\n");
 	break;
 
 	case DM_EVT_SECURITY_SETUP_COMPLETE:
-		simple_uart_putstring((const uint8_t *)"DM_EVT_SECURITY_SETUP_COMPLETE\r\n");
 
 		is_connecting = false;
 		is_connected = true;
@@ -763,23 +633,18 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 	break;
 
 	case DM_EVT_LINK_SECURED:
-		simple_uart_putstring((const uint8_t *)"DM_EVT_LINK_SECURED\r\n");
 	break;
 
 	case DM_EVT_DEVICE_CONTEXT_LOADED:
-		simple_uart_putstring((const uint8_t *)"DM_EVT_DEVICE_CONTEXT_LOADED\r\n");
 	break;
 
 	case DM_EVT_DEVICE_CONTEXT_STORED:
-		simple_uart_putstring((const uint8_t *)"DM_EVT_DEVICE_CONTEXT_STORED\r\n");
 	break;
 
 	case DM_EVT_DEVICE_CONTEXT_DELETED:
-		simple_uart_putstring((const uint8_t *)"DM_EVT_DEVICE_CONTEXT_DELETED\r\n");
 	break;
 
 	default:
-		simple_uart_putstring((const uint8_t *)"UNKNOWN EVENT\r\n");
 	break;
 	}
 }
@@ -874,22 +739,18 @@ static void db_discovery_evt_handler(ble_db_discovery_evt_t *p_evt)
 					&&
 					(p_characteristic->characteristic.uuid.type == m_base_uuid_type)) {
 				// Characteristic found. Store the information needed and break.
-				simple_uart_putstring((const uint8_t *)"FOUND THE TARGET CHARACTERISTIC\r\n");
 
 				target_characteristic_found = true;
 				if (target_characteristic_found)
 					index = i;
 			}
 		}
-		simple_uart_putstring((const uint8_t *)"DISCOVERY COMPLETE\r\n");
 	} else {
-		simple_uart_putstring((const uint8_t *)"DISCOVERY FAILED\r\n");
 	}
 
 	if (target_characteristic_found) {
 		err_code = dm_security_setup_req(&m_dm_device_handle);
 		if (err_code != NRF_SUCCESS) {
-				simple_uart_putstring((const uint8_t *)"SECURITY SETUP REQUEST NOT SUCCESSFUL\r\n");
 		}
 		index = index;
 #if 0
@@ -1023,8 +884,6 @@ int main(void)
 {
 	global_state = STATE_CONFIG;
 
-	simple_uart_config(11, 12, 11, 11, false);
-
 	ble_stack_init();
 	device_manager_init(true);
 
@@ -1039,8 +898,6 @@ int main(void)
 	gpiote_start();
 
 	global_state = STATE_SLEEP;
-
-	simple_uart_putstring((const uint8_t *)"\r\nTX goes main loop\r\n");
 
 	while (1) {
 		uint32_t err_code;
@@ -1075,10 +932,8 @@ int main(void)
 				if (m_device_count) {
 					current_target = 0;
 					global_state = STATE_RX_CHANGE;
-					simple_uart_putstring((const uint8_t *)"STATE GATHER->CHANGE\r\n");
 					scan_start();
 				} else {
-					simple_uart_putstring((const uint8_t *)"STATE GATHER->SLEEP\r\n");
 					global_state = STATE_SLEEP;
 					do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 							VIBRATE_PAUSE_DURATION_SHORT,
@@ -1087,7 +942,6 @@ int main(void)
 			} else if (STATE_RX_CHANGE == global_state &&
 					!is_connecting) {
 				global_state = STATE_SLEEP;
-				simple_uart_putstring((const uint8_t *)"STATE CHANGE->SLEEP\r\n");
 				do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 						VIBRATE_PAUSE_DURATION_SHORT,
 						&vibrating);
@@ -1097,7 +951,6 @@ int main(void)
 		if (arm_up_occurred) {
 			arm_up_occurred = false;
 			if (STATE_RX_SELECT == global_state) {
-				simple_uart_putstring((const uint8_t *)"RX SELECTED\r\n");
 				do_vibrate(VIBRATE_DURATION_SHORT,
 						VIBRATE_PAUSE_DURATION_NORMAL,
 						&vibrating);

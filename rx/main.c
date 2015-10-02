@@ -3,7 +3,6 @@
 
 #include "softdevice_handler.h"
 #include "ble_advertising.h"
-#include "simple_uart.h"
 #include "nrf_gpio.h"
 #include "app_timer.h"
 #include "device_manager.h"
@@ -89,35 +88,28 @@ static void process_data(uint8_t data)
 	switch (data) {
 	case ACTION_ARM_UP:
 		JVC_control(JVC_CMD_3_C);
-		simple_uart_putstring((const uint8_t*) "UP\r\n");
 	break;
 
 	case ACTION_ROTATION_CW:
 		JVC_control(JVC_CMD_3_B);
-		simple_uart_putstring((const uint8_t*) "CW\r\n");
 	break;
 
 	case ACTION_ROTATION_CCW:
 		JVC_control(JVC_CMD_3_A);
-		simple_uart_putstring((const uint8_t*) "CCW\r\n");
 	break;
 
 	case ACTION_ARM_DOWN:
-		simple_uart_putstring((const uint8_t*) "DOWN\r\n");
 	break;
 
 	case ACTION_SWIPE_RIGHT:
 		JVC_control(JVC_CMD_3_6);
-		simple_uart_putstring((const uint8_t*) "RIGHT\r\n");
 	break;
 
 	case ACTION_SWIPE_LEFT:
 		JVC_control(JVC_CMD_3_4);
-		simple_uart_putstring((const uint8_t*) "LEFT\r\n");
 	break;
 
 	default:
-		simple_uart_putstring((const uint8_t*) "SHOULDN'T HAPPEN\r\n");
 	break;
 	}
 }
@@ -126,13 +118,11 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_CONNECTED:
-		simple_uart_putstring((const uint8_t*) "Connected\r\n");
 		app_timer_stop(m_advblink_timer);
 		nrf_gpio_pin_set(RX_GREEN_LED_PIN);
 	break;
 
 	case BLE_GAP_EVT_DISCONNECTED:
-		simple_uart_putstring((const uint8_t*) "Disconnected\r\n");
 		nrf_gpio_pin_clear(RX_GREEN_LED_PIN);
 		advertising_start();
 	break;
@@ -364,7 +354,6 @@ int main(void)
 {
 	uint32_t err_code;
 
-	simple_uart_config(6, 10, 5, 4, false);
 	nrf_gpio_cfg_output(RX_GREEN_LED_PIN);
 
 #ifdef ADV_BLINKING
@@ -379,8 +368,6 @@ int main(void)
 	advertising_init();
 	services_init();
 	advertising_start();
-
-	simple_uart_putstring((const uint8_t *)"RX goes main loop\r\n");
 
 	while (1)
 		power_manage();
