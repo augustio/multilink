@@ -73,6 +73,10 @@ typedef struct {
 static electria_device_t device_list[MAX_DEVICE_COUNT];
 static uint8_t current_target;
 
+#define MAX_ROOM_COUNT 16
+#define ROOM_HAS_RX (1 << 0)
+static uint8_t room_properties[MAX_ROOM_COUNT];
+
 #define APP_TIMER_PRESCALER	0
 #define APP_TIMER_MAX_TIMERS	8
 #define APP_TIMER_QUEUE_SIZE	12
@@ -419,12 +423,18 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 				if (STATE_RX_GATHER == global_state) {
 					if (m_device_count < MAX_DEVICE_COUNT && !is_address_in_table(&p_gap_evt->params.adv_report.peer_addr)) {
 						char buf[64];
+
+						/* Gather device properties */
 						device_list[m_device_count].rssi = p_gap_evt->params.adv_report.rssi;
 						device_list[m_device_count].peer_addr = p_gap_evt->params.adv_report.peer_addr;
 						device_list[m_device_count].room_id = (rx_properties.p_data[2] >> 4) & 0x0F;
 						device_list[m_device_count].rx_id = rx_properties.p_data[2] & 0x0F;
 						device_list[m_device_count].primary_continuous = (rx_properties.p_data[3] >> 4) & 0x0F;
 						device_list[m_device_count].device_commands = rx_properties.p_data[3] & 0x0F;
+						
+						/* Update room properties for the room where the device is */
+						room_properties[device_list[m_device_count].room_id] |= ROOM_HAS_RX;
+
 						m_device_count++;
 						sprintf(buf, "Total device count: %d room_id %x rx_id %x PC %x DC %x\r\n",
 											m_device_count,
@@ -877,21 +887,38 @@ static void service_init()
 
 static bool is_multiple_rooms(void)
 {
-	uint8_t i, j;
-
-	/* This is O(n^2), but called seldom, so let it be. */
+	uint8_t i;
+	uint8_t current_room = device_list[current_target].room_id;
 
 	for (i = 0; i < m_device_count; i++)
-		for (j = 0; j < m_device_count; j++)
-			if ((i != j) && device_list[i].room_id != device_list[j].room_id)
-				return true;
+		if (device_list[i].room_id != current_room)
+			return true;
 	return false;
 }
 
 static uint8_t get_best_rx_next_room()
 {
-	// FIXME
-	return 0;
+	uint8_t current_room = device_list[current_target].room_id;
+	uint8_t next_room = current_room;
+	uint8_t i;
+
+	/* Look for the next room with RX, first in rooms with bigger numbers */
+	for (i = current_room + 1; i < MAX_ROOM_COUNT; i++)
+		if ((room_properties[i] & ROOM_HAS_RX))
+			next_room = i;
+
+	/* Still not found? Look from the beginning of the list */
+	for (i = 0; i < current_room; i++)
+		if ((room_properties[i] & ROOM_HAS_RX))
+			next_room = i;
+
+	/* Look for the strongest signal in the next_room */
+	for (i = 0; i < m_device_count; i++)
+		if (device_list[i].room_id == next_room)
+			return i;
+
+	/* Should never happen */
+	return current_target;
 }
 
 static uint8_t get_next_rx_in_room(void)
@@ -911,13 +938,13 @@ static uint8_t get_next_rx_in_room(void)
 			return i;
 	}
 
-	/* If nothing else, just stay where we were */
+	/* Should never happen */
 	return current_target;
 }
 
 static uint8_t get_previous_rx_in_room(void)
 {
-	uint8_t i;
+	int8_t i;
 	uint8_t current_room = device_list[current_target].room_id;
 
 	for (i = current_target - 1; i >=0; i--) {
@@ -931,7 +958,7 @@ static uint8_t get_previous_rx_in_room(void)
 		if (device_list[current_target].room_id == current_room)
 			return i;
 
-	/* If nothing else, just stay where we were */
+	/* Should never happen */
 	return current_target;
 }
 
@@ -983,6 +1010,8 @@ int main(void)
 			if (STATE_SLEEP == global_state) {
 				global_state = STATE_RX_GATHER;
 				m_device_count = 0;
+				memset (room_properties, 0, sizeof room_properties);
+
 				do_vibrate(VIBRATE_DURATION_SHORT,
 						VIBRATE_PAUSE_DURATION_SHORT,
 						&vibrating);
