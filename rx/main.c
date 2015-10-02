@@ -50,19 +50,23 @@
 #define DEVICE_TYPE_PULSE_GENERATOR	(2)
 #define DEVICE_TYPE_MOTOR_CONTROL	(3)
 
-#define DEVICE_TYPE DEVICE_TYPE_SWITCH
+#define DEVICE_TYPE DEVICE_TYPE_PULSE_GENERATOR
 
 #define ADV_BLINKING
 //#undef ADV_BLINKING
 
 #ifdef ADV_BLINKING
 #define APP_TIMER_PRESCALER	0
-#define APP_TIMER_MAX_TIMERS	2
-#define APP_TIMER_QUEUE_SIZE	4
+#define APP_TIMER_MAX_TIMERS	4
+#define APP_TIMER_QUEUE_SIZE	8
 
 #define ADV_BLINKING_INTERVAL	APP_TIMER_TICKS(100, APP_TIMER_PRESCALER) 
 
 app_timer_id_t m_advblink_timer;
+#endif
+
+#if (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR)
+app_timer_id_t m_pulse_generator_timer;
 #endif
 
 #define SEC_PARAM_BOND                   1                                          /**< Perform bonding. */
@@ -103,7 +107,16 @@ static void process_data(uint8_t data)
 	case ACTION_ARM_UP:
 //		JVC_control(JVC_CMD_3_C);
 		simple_uart_putstring((const uint8_t*) "UP\r\n");
+#if (DEVICE_TYPE == DEVICE_TYPE_SWITCH)
 		nrf_gpio_pin_toggle(HIGH_SIDE_CONNECTOR_PIN_7);
+#elif (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR)
+		{
+			uint32_t err_code;
+			nrf_gpio_pin_set(HIGH_SIDE_CONNECTOR_PIN_7);
+			err_code = app_timer_start(m_pulse_generator_timer, DOOR_PULSE_TIMER_TICKS, NULL);
+			APP_ERROR_CHECK(err_code);
+		}
+#endif
 	break;
 
 	case ACTION_ROTATION_CW:
@@ -374,19 +387,30 @@ static void device_manager_init(bool erase_bonds)
 	APP_ERROR_CHECK(err_code);
 }
 
+static void pulse_timer_handler(void *p_context)
+{
+	nrf_gpio_pin_clear(HIGH_SIDE_CONNECTOR_PIN_7);
+}
+
 int main(void)
 {
 	uint32_t err_code;
 
 	simple_uart_config(6, 10, 5, 4, false);
+
+	APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_QUEUE_SIZE, NULL);
 	nrf_gpio_cfg_output(RX_GREEN_LED_PIN);
 #if ((DEVICE_TYPE == DEVICE_TYPE_SWITCH) || (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR))
 	nrf_gpio_cfg_output(HIGH_SIDE_CONNECTOR_PIN_7);
 	nrf_gpio_pin_clear(HIGH_SIDE_CONNECTOR_PIN_7);
 #endif
 
+#if (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR)
+	err_code = app_timer_create(&m_pulse_generator_timer, APP_TIMER_MODE_SINGLE_SHOT, pulse_timer_handler);
+	APP_ERROR_CHECK(err_code);
+#endif
+
 #ifdef ADV_BLINKING
-	APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_QUEUE_SIZE, NULL);
 	err_code = app_timer_create(&m_advblink_timer, APP_TIMER_MODE_REPEATED, advblink_handler);
 	APP_ERROR_CHECK(err_code);
 #endif
