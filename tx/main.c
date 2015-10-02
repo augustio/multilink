@@ -447,6 +447,13 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 					qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
 				} else if (STATE_RX_CHANGE == global_state && !is_connecting && is_same_peer_addr(&device_list[current_target].peer_addr, &p_gap_evt->params.adv_report.peer_addr)) {
 
+					err_code = sd_ble_gap_scan_stop();
+					if (err_code != NRF_SUCCESS) {
+						char buf[16];
+						sprintf(buf, "Force-stopped scan failed %d\r\n", (unsigned int)err_code);
+						simple_uart_putstring((const uint8_t *)buf);
+					}
+
 					err_code = sd_ble_gap_connect(&device_list[current_target].peer_addr,
 							&m_scan_param,
 							&m_connection_param);
