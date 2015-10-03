@@ -695,8 +695,8 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 
 		memset(&m_ble_db_discovery, 0 , sizeof (m_ble_db_discovery));
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
-#if 1
 		if (STATE_RX_CHANGE == global_state) {
+#if 1
 			if (is_connecting) {
 				is_connecting = false;
 				global_state = STATE_SLEEP;
@@ -707,6 +707,9 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 			} else {
 				scan_start();
 			}
+#else
+			scan_start();
+#endif
 		} else {
                         err_code = app_timer_stop(m_polling_timer);
                         APP_ERROR_CHECK(err_code);
@@ -721,25 +724,7 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
                                         VIBRATE_PAUSE_DURATION_NORMAL,
                                         &vibrating);
                 }
-#else
-		if (STATE_RX_CHANGE == global_state) {
-			scan_start();
-		} else {
-			err_code = app_timer_stop(m_polling_timer);
-			APP_ERROR_CHECK(err_code);
-
-			if (isGyroEnabled()) {
-				gyroDisable();
-			}
-
-			global_state = STATE_SLEEP;
-
-			do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
-					VIBRATE_PAUSE_DURATION_NORMAL,
-					&vibrating);
-		}
 		simple_uart_putstring((const uint8_t *)"DM_EVT_DISCONNECTION\r\n");
-#endif
 	break;
 
 	case DM_EVT_SECURITY_SETUP:
