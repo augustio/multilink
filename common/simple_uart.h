@@ -15,6 +15,8 @@
 
 /*lint ++flb "Enter library region" */
 
+#ifdef SIMPLE_UART
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -67,6 +69,28 @@ void simple_uart_config(uint8_t rts_pin_number, uint8_t txd_pin_number, uint8_t 
 /**
  *@}
  **/
+
+#else
+
+#include "compiler_abstraction.h"
+#include "nordic_common.h"
+#include <stdint.h>
+#include <stdbool.h>
+
+static __INLINE void simple_uart_config(uint8_t rts_pin_number, uint8_t txd_pin_number, uint8_t cts_pin_number, uint8_t rxd_pin_number, bool hwfc)
+{
+	UNUSED_VARIABLE(rts_pin_number);
+	UNUSED_VARIABLE(txd_pin_number);
+	UNUSED_VARIABLE(cts_pin_number);
+	UNUSED_VARIABLE(rxd_pin_number);
+	UNUSED_VARIABLE(hwfc);
+}
+
+static __INLINE void simple_uart_putstring(const uint8_t *str)
+{
+	UNUSED_VARIABLE(str);
+}
+#endif
 
 /*lint --flb "Leave library region" */
 #endif

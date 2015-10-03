@@ -10,6 +10,8 @@
  *
  */
 
+#ifdef SIMPLE_UART
+
 #include <stdint.h>
 
 #include "nrf.h"
@@ -107,3 +109,5 @@ void simple_uart_config(  uint8_t rts_pin_number,
   NRF_UART0->TASKS_STARTRX    = 1;
   NRF_UART0->EVENTS_RXDRDY    = 0;
 }
+
+#endif
