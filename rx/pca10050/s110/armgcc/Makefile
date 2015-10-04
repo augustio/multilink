@@ -38,7 +38,6 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 #source common to all targets
 C_SOURCE_FILES += \
 $(abspath ../../../main.c) \
-$(abspath ../../../../common/simple_uart.c) \
 $(abspath ../../../IRLED_cntrl.c) \
 $(abspath ../../../../components/drivers_nrf/hal/nrf_delay.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
@@ -49,6 +48,7 @@ $(abspath ../../../../components/libraries/timer/app_timer.c) \
 $(abspath ../../../../components/ble/ble_advertising/ble_advertising.c) \
 $(abspath ../../../../components/ble/common/ble_advdata.c) \
 $(abspath ../../../../components/softdevice/common/softdevice_handler/softdevice_handler.c) \
+#$(abspath ../../../../common/simple_uart.c) \
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  = $(abspath ../../../../components/toolchain/gcc/gcc_startup_nrf51.s)
@@ -102,7 +102,7 @@ CFLAGS += -mfloat-abi=soft
 # keep every function in separate section. This will allow linker to dump unused functions
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 CFLAGS += -fno-builtin --short-enums
-CFLAGS += -DSIMPLE_UART
+#CFLAGS += -DSIMPLE_UART
 
 # keep every function in separate section. This will allow linker to dump unused functions
 LDFLAGS += -Xlinker -Map=$(LISTING_DIRECTORY)/$(OUTPUT_FILENAME).map
