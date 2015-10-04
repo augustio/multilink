@@ -153,7 +153,9 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_CONNECTED:
 		simple_uart_putstring((const uint8_t*) "Connected\r\n");
+#ifdef ADV_BLINKING
 		app_timer_stop(m_advblink_timer);
+#endif
 		nrf_gpio_pin_set(RX_GREEN_LED_PIN);
 	break;
 
