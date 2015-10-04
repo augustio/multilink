@@ -39,11 +39,6 @@
 
 #define RX_GREEN_LED_PIN (8)
 
-#define HIGH_SIDE_CONNECTOR_PIN_7 (9)
-#define HIGH_SIDE_CONNECTOR_PIN_8 (10)
-#define LOW_SIDE_CONNECTOR_PIN_5 (2)
-#define LOW_SIDE_CONNECTOR_PIN_4 (1)
-
 #define APP_TIMER_PRESCALER	0
 #define APP_TIMER_MAX_TIMERS	4
 #define APP_TIMER_QUEUE_SIZE	8
@@ -57,8 +52,19 @@
 #define DEVICE_TYPE_SWITCH		(1)
 #define DEVICE_TYPE_PULSE_GENERATOR	(2)
 #define DEVICE_TYPE_MOTOR_CONTROL	(3)
+#define DEVICE_TYPE_IR_CONTROL		(4)
 
-#define DEVICE_TYPE DEVICE_TYPE_MOTOR_CONTROL
+//#define DEVICE_TYPE DEVICE_TYPE_SWITCH
+//#define DEVICE_TYPE DEVICE_TYPE_PULSE_GENERATOR
+//#define DEVICE_TYPE DEVICE_TYPE_MOTOR_CONTROL
+#define DEVICE_TYPE DEVICE_TYPE_IR_CONTROL
+
+#define HIGH_SIDE_CONNECTOR_PIN_7 (9)
+#define HIGH_SIDE_CONNECTOR_PIN_8 (10)
+#define LOW_SIDE_CONNECTOR_PIN_5 (2)
+#define LOW_SIDE_CONNECTOR_PIN_4 (1)
+
+#define PULSE_SWITCH_PIN HIGH_SIDE_CONNECTOR_PIN_7 
 
 #define ADV_BLINKING
 #undef ADV_BLINKING
@@ -108,36 +114,40 @@ static void advertising_start()
 
 static void process_data(uint8_t data)
 {
+#if ((DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR) || (DEVICE_TYPE == DEVICE_TYPE_MOTOR_CONTROL))
 	uint32_t err_code;
+#endif
 
 	if (output_busy)
 		return;
 
 	switch (data) {
 	case ACTION_ARM_UP:
-//		JVC_control(JVC_CMD_3_C);
 		simple_uart_putstring((const uint8_t*) "UP\r\n");
 #if (DEVICE_TYPE == DEVICE_TYPE_SWITCH)
-		nrf_gpio_pin_toggle(HIGH_SIDE_CONNECTOR_PIN_7);
+		nrf_gpio_pin_toggle(PULSE_SWITCH_PIN);
 #elif (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR)
 		{
-			nrf_gpio_pin_set(HIGH_SIDE_CONNECTOR_PIN_7);
+			nrf_gpio_pin_set(PULSE_SWITCH_PIN);
 			err_code = app_timer_start(m_pulse_generator_timer, DOOR_PULSE_TIMER_TICKS, NULL);
 			APP_ERROR_CHECK(err_code);
 			output_busy = true;
 		}
+#elif (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
+		JVC_control(JVC_CMD_3_C);
 #endif
 	break;
 
 	case ACTION_ROTATION_CW:
-		JVC_control(JVC_CMD_3_B);
-		simple_uart_putstring((const uint8_t*) "CW\r\n");
+	simple_uart_putstring((const uint8_t*) "CW\r\n");
 #if (DEVICE_TYPE == DEVICE_TYPE_MOTOR_CONTROL)
 	nrf_gpio_pin_set(LOW_SIDE_CONNECTOR_PIN_5);
 	nrf_gpio_pin_set(HIGH_SIDE_CONNECTOR_PIN_7);
 	err_code = app_timer_start(m_pulse_generator_timer, MOTOR_ON_TIMER_TICKS, (void *)ROTATION_CW);
 	APP_ERROR_CHECK(err_code);
 	output_busy = true;
+#elif (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
+	JVC_control(JVC_CMD_3_B);
 #endif
 	break;
 
@@ -148,19 +158,24 @@ static void process_data(uint8_t data)
 	err_code = app_timer_start(m_pulse_generator_timer, MOTOR_ON_TIMER_TICKS, (void *)ROTATION_CCW);
 	APP_ERROR_CHECK(err_code);
 	output_busy = true;
+#elif (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
+	JVC_control(JVC_CMD_3_A);
 #endif
-		JVC_control(JVC_CMD_3_A);
-		simple_uart_putstring((const uint8_t*) "CCW\r\n");
+	simple_uart_putstring((const uint8_t*) "CCW\r\n");
 	break;
 
 	case ACTION_SWIPE_RIGHT:
-		JVC_control(JVC_CMD_3_6);
+#if (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
+	JVC_control(JVC_CMD_3_6);
+#endif
 		simple_uart_putstring((const uint8_t*) "RIGHT\r\n");
 	break;
 
 	case ACTION_SWIPE_LEFT:
-		JVC_control(JVC_CMD_3_4);
-		simple_uart_putstring((const uint8_t*) "LEFT\r\n");
+#if (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
+	JVC_control(JVC_CMD_3_4);
+#endif
+	simple_uart_putstring((const uint8_t*) "LEFT\r\n");
 	break;
 
 	default:
@@ -412,7 +427,7 @@ static void device_manager_init(bool erase_bonds)
 static void pulse_timer_handler(void *p_context)
 {
 #if (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR)
-	nrf_gpio_pin_clear(HIGH_SIDE_CONNECTOR_PIN_7);
+	nrf_gpio_pin_clear(PULSE_SWITCH_PIN);
 #elif (DEVICE_TYPE == DEVICE_TYPE_MOTOR_CONTROL)
 	{
 		uint32_t direction = (uint32_t)p_context;
@@ -430,16 +445,16 @@ static void pulse_timer_handler(void *p_context)
 
 static void actuators_init(void)
 {
+
+#if ((DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR) || (DEVICE_TYPE == DEVICE_TYPE_MOTOR_CONTROL))
 	uint32_t err_code;
-
-#if ((DEVICE_TYPE == DEVICE_TYPE_SWITCH) || (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR))
-	nrf_gpio_cfg_output(HIGH_SIDE_CONNECTOR_PIN_7);
-	nrf_gpio_pin_clear(HIGH_SIDE_CONNECTOR_PIN_7);
-#endif
-
-#if ((DEVICE_TYPE == DEVICE_TYPE_MOTOR_CONTROL) || (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR) || (DEVICE_TYPE == DEVICE_TYPE_MOTOR_CONTROL))
 	err_code = app_timer_create(&m_pulse_generator_timer, APP_TIMER_MODE_SINGLE_SHOT, pulse_timer_handler);
 	APP_ERROR_CHECK(err_code);
+#endif
+
+#if ((DEVICE_TYPE == DEVICE_TYPE_SWITCH) || (DEVICE_TYPE == DEVICE_TYPE_PULSE_GENERATOR))
+	nrf_gpio_cfg_output(PULSE_SWITCH_PIN);
+	nrf_gpio_pin_clear(PULSE_SWITCH_PIN);
 #endif
 
 #if (DEVICE_TYPE == DEVICE_TYPE_MOTOR_CONTROL)
