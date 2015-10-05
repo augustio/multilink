@@ -33,9 +33,9 @@
 #define COMPANY_IDENTIFIER 0xDADA
 
 #define ROOM_ID 0xF
-#define DEVICE_ID 0x2
+#define DEVICE_ID 0x3
 #define PRIMARY_CONTINUOUS 0
-#define DEVICE_COMMANDS 3
+#define DEVICE_COMMANDS 5
 
 #define RX_GREEN_LED_PIN (8)
 
@@ -64,7 +64,7 @@
 #define LOW_SIDE_CONNECTOR_PIN_5 (2)
 #define LOW_SIDE_CONNECTOR_PIN_4 (1)
 
-#define PULSE_SWITCH_PIN HIGH_SIDE_CONNECTOR_PIN_7 
+#define PULSE_SWITCH_PIN LOW_SIDE_CONNECTOR_PIN_4 
 
 #define ADV_BLINKING
 #undef ADV_BLINKING
@@ -134,7 +134,7 @@ static void process_data(uint8_t data)
 			output_busy = true;
 		}
 #elif (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
-		JVC_control(JVC_CMD_3_C);
+		Sony_control(SONY_CMD_ON_OFF);
 #endif
 	break;
 
@@ -147,7 +147,7 @@ static void process_data(uint8_t data)
 	APP_ERROR_CHECK(err_code);
 	output_busy = true;
 #elif (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
-	JVC_control(JVC_CMD_3_B);
+	Sony_control(SONY_CMD_VOL_UP);
 #endif
 	break;
 
@@ -159,21 +159,21 @@ static void process_data(uint8_t data)
 	APP_ERROR_CHECK(err_code);
 	output_busy = true;
 #elif (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
-	JVC_control(JVC_CMD_3_A);
+	Sony_control(SONY_CMD_VOL_DOWN);
 #endif
 	simple_uart_putstring((const uint8_t*) "CCW\r\n");
 	break;
 
 	case ACTION_SWIPE_RIGHT:
 #if (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
-	JVC_control(JVC_CMD_3_6);
+	Sony_control(SONY_CMD_P_UP);
 #endif
 		simple_uart_putstring((const uint8_t*) "RIGHT\r\n");
 	break;
 
 	case ACTION_SWIPE_LEFT:
 #if (DEVICE_TYPE == DEVICE_TYPE_IR_CONTROL)
-	JVC_control(JVC_CMD_3_4);
+	Sony_control(SONY_CMD_P_DOWN);
 #endif
 	simple_uart_putstring((const uint8_t*) "LEFT\r\n");
 	break;
