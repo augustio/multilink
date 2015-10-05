@@ -86,6 +86,7 @@ static uint8_t room_properties[MAX_ROOM_COUNT];
 #define IMU_DOUBLE_TAP_PIN (9)
 
 static app_timer_id_t m_polling_timer;
+static app_timer_id_t m_user_activity_tracker;
 static app_gpiote_user_id_t m_gpiote_user_id;
 
 static ble_db_discovery_t m_ble_db_discovery;
@@ -804,6 +805,10 @@ static void device_manager_init(bool erase_bonds)
 	APP_ERROR_CHECK(err_code);
 }
 
+static void user_activity_tracking_handler(void *p_context)
+{
+}
+
 static void timers_init()
 {
 	APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_QUEUE_SIZE, NULL);
@@ -814,6 +819,9 @@ static void timers_create()
 	uint32_t err_code;
 
 	err_code = app_timer_create(&m_polling_timer, APP_TIMER_MODE_REPEATED, polling_timer_handler);
+	APP_ERROR_CHECK(err_code);
+
+	err_code = app_timer_create(&m_user_activity_tracker, APP_TIMER_MODE_SINGLE_SHOT, user_activity_tracking_handler);
 	APP_ERROR_CHECK(err_code);
 }
 
