@@ -46,10 +46,10 @@ $(abspath ../../../main.c) \
 $(abspath ../../../vibrate.c) \
 $(abspath ../../../gesture.c) \
 $(abspath ../../../sw_spi.c) \
-$(abspath ../../../../common/simple_uart.c) \
 $(abspath ../../../../components/toolchain/system_nrf51.c) \
 $(abspath ../../../../components/softdevice/common/softdevice_handler/softdevice_handler.c) \
 $(abspath ../../../../components/ble/device_manager/device_manager_central.c) \
+#$(abspath ../../../../common/simple_uart.c) \
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  = $(abspath ../../../../components/toolchain/gcc/gcc_startup_nrf51.s)
@@ -102,7 +102,7 @@ CFLAGS += -mcpu=cortex-m0
 CFLAGS += -mthumb -mabi=aapcs --std=gnu99
 CFLAGS += -Wall -Werror -O3
 CFLAGS += -mfloat-abi=soft
-CFLAGS += -DSIMPLE_UART
+#CFLAGS += -DSIMPLE_UART
 # keep every function in separate section. This will allow linker to dump unused functions
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 CFLAGS += -fno-builtin --short-enums

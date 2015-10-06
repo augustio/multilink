@@ -24,8 +24,8 @@
 #define SCAN_INTERVAL 0x00A0  /**< Determines scan interval in units of 0.625 millisecond. */
 #define SCAN_WINDOW   0x0050  /**< Determines scan window in units of 0.625 millisecond. */
 
-#define MIN_CONNECTION_INTERVAL    MSEC_TO_UNITS(7.5, UNIT_1_25_MS)
-#define MAX_CONNECTION_INTERVAL    MSEC_TO_UNITS(30, UNIT_1_25_MS)
+#define MIN_CONNECTION_INTERVAL    MSEC_TO_UNITS(45, UNIT_1_25_MS)
+#define MAX_CONNECTION_INTERVAL    MSEC_TO_UNITS(55, UNIT_1_25_MS)
 #define SUPERVISION_TIMEOUT        MSEC_TO_UNITS(4000, UNIT_10_MS)
 
 #define SEC_PARAM_BOND             0                                  /**< Perform bonding. */
@@ -115,7 +115,6 @@ static bool ccw_rotation_occurred = false;
 static bool memory_access_in_progress = false;
 static bool vibrating = false;
 static bool is_connected = false;
-static bool is_connecting = false;
 
 enum {
 	ORIENTATION_UNDEFINED = -1,
@@ -372,6 +371,13 @@ static int compare_rssi(const void *src, const void *dst)
 	return dstd->rssi - srcd->rssi;
 }
 
+static int compare_rx_id(const void *src, const void *dst)
+{
+	electria_device_t *srcd = (electria_device_t *)src;
+	electria_device_t *dstd = (electria_device_t *)dst;
+	return srcd->rx_id - dstd->rx_id;
+}
+
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
 	const ble_gap_evt_t *p_gap_evt = &p_ble_evt->evt.gap_evt;
@@ -444,8 +450,8 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 											device_list[m_device_count - 1].device_commands);
 						simple_uart_putstring((const uint8_t *)buf);
 					}
-					qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rssi);
-				} else if (STATE_RX_CHANGE == global_state && !is_connecting && is_same_peer_addr(&device_list[current_target].peer_addr, &p_gap_evt->params.adv_report.peer_addr)) {
+					qsort((void *)device_list, m_device_count, sizeof (electria_device_t), compare_rx_id);
+				} else if (STATE_RX_CHANGE == global_state && is_same_peer_addr(&device_list[current_target].peer_addr, &p_gap_evt->params.adv_report.peer_addr)) {
 
 					err_code = sd_ble_gap_scan_stop();
 					if (err_code != NRF_SUCCESS) {
@@ -468,7 +474,6 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 								VIBRATE_PAUSE_DURATION_SHORT,
 								&vibrating);
 					} else {
-						is_connecting = true;
 						simple_uart_putstring((const uint8_t *)"Started connection process. Please check the RX console now.\r\n");
 					}
 
@@ -683,33 +688,28 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 		m_conn_handle = p_event->event_param.p_gap_param->conn_handle;
 		m_dm_device_handle = (*p_handle);
 
+#if 0
 		// Discover peer's services.
 		err_code = ble_db_discovery_start(&m_ble_db_discovery,
 				p_event->event_param.p_gap_param->conn_handle);
 		APP_ERROR_CHECK(err_code);
+#else
+		err_code = dm_security_setup_req(&m_dm_device_handle);
+		if (err_code != NRF_SUCCESS) {
+				simple_uart_putstring((const uint8_t *)"SECURITY SETUP REQUEST NOT SUCCESSFUL\r\n");
+		}
+#endif
 	}
 	break;
 
 	case DM_EVT_DISCONNECTION:
 		is_connected = false;
+		sprintf(buf, "%d\r\n", global_state);
 
 		memset(&m_ble_db_discovery, 0 , sizeof (m_ble_db_discovery));
 		m_conn_handle = BLE_CONN_HANDLE_INVALID;
 		if (STATE_RX_CHANGE == global_state) {
-#if 1
-			if (is_connecting) {
-				is_connecting = false;
-				global_state = STATE_SLEEP;
-
-				do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
-						VIBRATE_PAUSE_DURATION_NORMAL,
-						&vibrating);
-			} else {
-				scan_start();
-			}
-#else
 			scan_start();
-#endif
 		} else {
                         err_code = app_timer_stop(m_polling_timer);
                         APP_ERROR_CHECK(err_code);
@@ -724,7 +724,8 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
                                         VIBRATE_PAUSE_DURATION_NORMAL,
                                         &vibrating);
                 }
-		simple_uart_putstring((const uint8_t *)"DM_EVT_DISCONNECTION\r\n");
+		simple_uart_putstring((const uint8_t *)"DM_EVT_DISCONNECTION IN STATE ");
+		simple_uart_putstring((uint8_t *)buf);
 	break;
 
 	case DM_EVT_SECURITY_SETUP:
@@ -734,7 +735,6 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 	case DM_EVT_SECURITY_SETUP_COMPLETE:
 		simple_uart_putstring((const uint8_t *)"DM_EVT_SECURITY_SETUP_COMPLETE\r\n");
 
-		is_connecting = false;
 		is_connected = true;
 		global_state = STATE_RX_SELECT;
 
@@ -1069,8 +1069,7 @@ int main(void)
 							VIBRATE_PAUSE_DURATION_SHORT,
 							&vibrating);
 				}
-			} else if (STATE_RX_CHANGE == global_state &&
-					!is_connecting) {
+			} else if (STATE_RX_CHANGE == global_state) {
 				global_state = STATE_SLEEP;
 				simple_uart_putstring((const uint8_t *)"STATE CHANGE->SLEEP\r\n");
 				do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
@@ -1083,6 +1082,7 @@ int main(void)
 			arm_up_occurred = false;
 			if (STATE_RX_SELECT == global_state) {
 				simple_uart_putstring((const uint8_t *)"RX SELECTED\r\n");
+
 				do_vibrate(VIBRATE_DURATION_SHORT,
 						VIBRATE_PAUSE_DURATION_NORMAL,
 						&vibrating);
