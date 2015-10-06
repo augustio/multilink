@@ -832,7 +832,7 @@ static void device_manager_init(bool erase_bonds)
 
 static void user_activity_tracking_handler(void *p_context)
 {
-	NVIC_SystemReset();
+	sd_nvic_SystemReset();
 }
 
 static void timers_init()
