@@ -86,7 +86,7 @@ static uint8_t room_properties[MAX_ROOM_COUNT];
 #define IMU_DOUBLE_TAP_PIN (9)
 
 static app_timer_id_t m_polling_timer;
-static app_timer_id_t m_user_activity_timer;
+static app_timer_id_t m_user_activity_tracker;
 static app_gpiote_user_id_t m_gpiote_user_id;
 
 static ble_db_discovery_t m_ble_db_discovery;
@@ -468,9 +468,6 @@ static void on_ble_evt(ble_evt_t *p_ble_evt)
 						do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 								VIBRATE_PAUSE_DURATION_SHORT,
 								&vibrating);
-
-						err_code = app_timer_stop(m_user_activity_timer);
-						/* We intentionally skip checking the error code here. */
 					} else {
 						is_connecting = true;
 						simple_uart_putstring((const uint8_t *)"Started connection process. Please check the RX console now.\r\n");
@@ -708,11 +705,6 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
 				do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 						VIBRATE_PAUSE_DURATION_NORMAL,
 						&vibrating);
-
-				err_code = app_timer_stop(m_user_activity_timer);
-				/* We intentionally skip checking the error code here. */
-
-
 			} else {
 				scan_start();
 			}
@@ -732,10 +724,6 @@ static ret_code_t device_manager_event_handler(const dm_handle_t *p_handle,
                         do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
                                         VIBRATE_PAUSE_DURATION_NORMAL,
                                         &vibrating);
-
-			err_code = app_timer_stop(m_user_activity_timer);
-			/* We intentionally skip checking the error code here. */
-
                 }
 		simple_uart_putstring((const uint8_t *)"DM_EVT_DISCONNECTION\r\n");
 	break;
@@ -819,12 +807,6 @@ static void device_manager_init(bool erase_bonds)
 
 static void user_activity_tracking_handler(void *p_context)
 {
-	/* Ouch, user has been inactive. Let's clean up the mess */
-	// disconnect
-	// poll timer off
-	// state = sleep
-	// flags to initial position
-	// vibrate
 }
 
 static void timers_init()
@@ -839,7 +821,7 @@ static void timers_create()
 	err_code = app_timer_create(&m_polling_timer, APP_TIMER_MODE_REPEATED, polling_timer_handler);
 	APP_ERROR_CHECK(err_code);
 
-	err_code = app_timer_create(&m_user_activity_timer, APP_TIMER_MODE_SINGLE_SHOT, user_activity_tracking_handler);
+	err_code = app_timer_create(&m_user_activity_tracker, APP_TIMER_MODE_SINGLE_SHOT, user_activity_tracking_handler);
 	APP_ERROR_CHECK(err_code);
 }
 
@@ -1089,13 +1071,8 @@ int main(void)
 					simple_uart_putstring((const uint8_t *)"STATE GATHER->CHANGE\r\n");
 					scan_start();
 				} else {
-					/* Scanned around, but no devices found. */
 					simple_uart_putstring((const uint8_t *)"STATE GATHER->SLEEP\r\n");
 					global_state = STATE_SLEEP;
-
-					err_code = app_timer_stop(m_user_activity_timer);
-					/* We intentionally skip checking the error code here. */
-
 					do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 							VIBRATE_PAUSE_DURATION_SHORT,
 							&vibrating);
@@ -1103,10 +1080,6 @@ int main(void)
 			} else if (STATE_RX_CHANGE == global_state &&
 					!is_connecting) {
 				global_state = STATE_SLEEP;
-
-				err_code = app_timer_stop(m_user_activity_timer);
-				/* We intentionally skip checking the error code here. */
-
 				simple_uart_putstring((const uint8_t *)"STATE CHANGE->SLEEP\r\n");
 				do_vibrate(VIBRATE_DURATION_EXTRA_LONG,
 						VIBRATE_PAUSE_DURATION_SHORT,
@@ -1143,13 +1116,9 @@ int main(void)
 				gyroDisable();
 
 			global_state = STATE_SLEEP;
-
 			err_code = sd_ble_gap_disconnect(m_conn_handle,
 					BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 			APP_ERROR_CHECK(err_code);
-
-			err_code = app_timer_stop(m_user_activity_timer);
-			/* We intentionally skip checking the error code here. */
 		}
 
 		if (cw_rotation_occurred) {
