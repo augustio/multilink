@@ -82,7 +82,6 @@ static uint8_t room_properties[MAX_ROOM_COUNT];
 #define APP_TIMER_QUEUE_SIZE	12
 
 #define POLLING_INTERVAL APP_TIMER_TICKS(10, APP_TIMER_PRESCALER)
-#define USER_INACTIVITY_INTERVAL APP_TIMER_TICKS((20 * 1000), APP_TIMER_PRESCALER)
 
 #define IMU_DOUBLE_TAP_PIN (9)
 
@@ -215,15 +214,9 @@ static void send_data(uint8_t data)
 	}
 }
 
-static uint8_t get_rx_number_of_commands(void)
+static uint8_t get_rx_number_of_commands()
 {
 	return device_list[current_target].device_commands;
-}
-
-static void restart_user_inactivity_timer(void)
-{
-	app_timer_stop(m_user_activity_timer);
-	app_timer_start(m_user_activity_timer, USER_INACTIVITY_INTERVAL, NULL);
 }
 
 static void polling_timer_handler(void *p_context)
@@ -238,32 +231,27 @@ static void polling_timer_handler(void *p_context)
 
 	case ACTION_ARM_UP:
 		simple_uart_putstring((const uint8_t *)"UP\r\n");
-		restart_user_inactivity_timer();
 		arm_up_occurred = true;
 	break;
 
 	case ACTION_ROTATION_CCW:
 		ccw_rotation_occurred = true;
-		restart_user_inactivity_timer();
 		simple_uart_putstring((const uint8_t *)"CCW\r\n");
 	break;
 
 	case ACTION_ROTATION_CW:
 		cw_rotation_occurred = true;
-		restart_user_inactivity_timer();
 		simple_uart_putstring((const uint8_t *)"CW\r\n");
 	break;
 
 	case ACTION_ARM_DOWN:
 		simple_uart_putstring((const uint8_t *)"DOWN\r\n");
-		restart_user_inactivity_timer();
 		arm_down_occurred = true;
 
 	break;
 
 	case ACTION_SWIPE_RIGHT:
 		simple_uart_putstring((const uint8_t *)"RIGHT\r\n");
-		restart_user_inactivity_timer();
 		if (STATE_RX_CONTROL == global_state) {
 			send_data(ACTION_SWIPE_RIGHT);
 
@@ -275,7 +263,6 @@ static void polling_timer_handler(void *p_context)
 
 	case ACTION_SWIPE_LEFT:
 		simple_uart_putstring((const uint8_t *)"LEFT\r\n");
-		restart_user_inactivity_timer();
 		if (STATE_RX_CONTROL == global_state) {
 			send_data(ACTION_SWIPE_LEFT);
 
@@ -832,7 +819,6 @@ static void device_manager_init(bool erase_bonds)
 
 static void user_activity_tracking_handler(void *p_context)
 {
-	simple_uart_putstring((uint8_t *)"User inactive, cleaning up...\r\n");
 	/* Ouch, user has been inactive. Let's clean up the mess */
 	// disconnect
 	// poll timer off
@@ -1080,9 +1066,6 @@ int main(void)
 						VIBRATE_PAUSE_DURATION_SHORT,
 						&vibrating);
 				scan_start();
-				err_code = app_timer_start(m_user_activity_timer, USER_INACTIVITY_INTERVAL, NULL);
-				APP_ERROR_CHECK(err_code);
-
 			} else if (STATE_RX_SELECT == global_state &&
 					is_multiple_rooms()) {
 				global_state = STATE_RX_CHANGE;
