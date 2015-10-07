@@ -284,7 +284,9 @@ static void polling_timer_handler(void *p_context)
 
 static void scan_start(void)
 {
-	/* For simplicity, we always do nonselective scan */
+	ble_gap_whitelist_t   	whitelist;
+	ble_gap_addr_t      	*p_whitelist_addr[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];
+	ble_gap_irk_t       	*p_whitelist_irk[BLE_GAP_WHITELIST_IRK_MAX_COUNT];
 
 	uint32_t err_code;
 	uint32_t count;
@@ -297,12 +299,30 @@ static void scan_start(void)
 		return;
 	}
 
-	m_scan_param.active       = 0;             // Active scanning set.
-	m_scan_param.selective    = 0;             // Selective scanning not set.
-	m_scan_param.interval     = SCAN_INTERVAL; // Scan interval.
-	m_scan_param.window       = SCAN_WINDOW;   // Scan window.
-	m_scan_param.p_whitelist  = NULL;          // Provide whitelist.
-	m_scan_param.timeout      = 0x0001;        // No timeout.
+	// Initialize whitelist parameters.
+	whitelist.addr_count = BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
+	whitelist.irk_count  = 0;
+	whitelist.pp_addrs   = p_whitelist_addr;
+	whitelist.pp_irks    = p_whitelist_irk;
+
+	err_code = dm_whitelist_create(&m_dm_app_id,&whitelist);
+	APP_ERROR_CHECK(err_code);
+
+	if ((whitelist.addr_count == 0) && (whitelist.irk_count == 0)) {
+		m_scan_param.active       = 0;             // Active scanning set.
+		m_scan_param.selective    = 0;             // Selective scanning not set.
+		m_scan_param.interval     = SCAN_INTERVAL; // Scan interval.
+		m_scan_param.window       = SCAN_WINDOW;   // Scan window.
+		m_scan_param.p_whitelist  = NULL;          // Provide whitelist.
+		m_scan_param.timeout      = 0x0001;        // No timeout.
+	} else {
+		m_scan_param.active       = 0;             // Active scanning set.
+		m_scan_param.selective    = 1;             // Selective scanning not set.
+		m_scan_param.interval     = SCAN_INTERVAL; // Scan interval.
+		m_scan_param.window       = SCAN_WINDOW;   // Scan window.
+		m_scan_param.p_whitelist  = &whitelist;          // Provide whitelist.
+		m_scan_param.timeout      = 0x0001;        // No timeout.
+	}
 
 	err_code = sd_ble_gap_scan_start(&m_scan_param);
 	APP_ERROR_CHECK(err_code);
