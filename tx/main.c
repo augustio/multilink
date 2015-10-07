@@ -832,7 +832,13 @@ static void device_manager_init(bool erase_bonds)
 
 static void user_activity_tracking_handler(void *p_context)
 {
-	NVIC_SystemReset();
+	simple_uart_putstring((uint8_t *)"User inactive, cleaning up...\r\n");
+	/* Ouch, user has been inactive. Let's clean up the mess */
+	// disconnect
+	// poll timer off
+	// state = sleep
+	// flags to initial position
+	// vibrate
 }
 
 static void timers_init()
