@@ -67,23 +67,21 @@ void spi_sw_master_send_bytes(uint16_t* tx_buffer,
 				SPI_MASTER_HALF_PERIOD_DELAY;
 			}
 			rx_byte = 0;
-			if (rx_byte != 0x69) {
-				for (int i = 7; i >= 0; i--) {
-					nrf_gpio_pin_clear(SPIM0_SCK_PIN); //falling edge
-					SPI_MASTER_HALF_PERIOD_DELAY;
-					nrf_gpio_pin_set(SPIM0_SCK_PIN); //rising edge
+			for (int i = 7; i >= 0; i--) {
+				nrf_gpio_pin_clear(SPIM0_SCK_PIN); //falling edge
+				SPI_MASTER_HALF_PERIOD_DELAY;
+				nrf_gpio_pin_set(SPIM0_SCK_PIN); //rising edge
 
-					//receive bit
-					rx_byte = rx_byte | ((uint8_t) nrf_gpio_pin_read(
-											SPIM0_MISO_PIN) << i);
+				//receive bit
+				rx_byte = rx_byte | ((uint8_t) nrf_gpio_pin_read(
+							SPIM0_MISO_PIN) << i);
 
-					SPI_MASTER_HALF_PERIOD_DELAY;
-				}
+				SPI_MASTER_HALF_PERIOD_DELAY;
 			}
 			rx_buffer[k] = rx_byte;
 			nrf_gpio_pin_set(SPIM0_SS_PIN);
 
-		//WRITE
+			//WRITE
 		} else {
 
 			//CPOL=1,CPHA=1, msbfirst
