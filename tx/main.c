@@ -308,7 +308,8 @@ static void scan_start(void)
 	err_code = dm_whitelist_create(&m_dm_app_id,&whitelist);
 	APP_ERROR_CHECK(err_code);
 
-	if ((whitelist.addr_count == 0) && (whitelist.irk_count == 0)) {
+	//if ((whitelist.addr_count == 0) && (whitelist.irk_count == 0)) {
+	if (true) {
 		m_scan_param.active       = 0;             // Active scanning set.
 		m_scan_param.selective    = 0;             // Selective scanning not set.
 		m_scan_param.interval     = SCAN_INTERVAL; // Scan interval.
@@ -622,6 +623,7 @@ static void ble_stack_init()
 	SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
 
 	ble_enable_params_t ble_enable_params;
+	ble_gap_addr_t gap_addr;
 
 	memset(&ble_enable_params, 0, sizeof(ble_enable_params));
 
@@ -632,6 +634,17 @@ static void ble_stack_init()
 	APP_ERROR_CHECK(err_code);
 	if (err_code != NRF_SUCCESS)
 		CHECK_ERROR_CODE;
+
+	gap_addr.addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC;
+	gap_addr.addr[0] = 0x5e;
+	gap_addr.addr[1] = 0x00; // this is unique for a specific TX device
+	gap_addr.addr[2] = 0x36;
+	gap_addr.addr[3] = 0x03;
+	gap_addr.addr[4] = 0xc9;
+	gap_addr.addr[5] = 0xc1 | 0xc0;
+
+	err_code = sd_ble_gap_address_set(BLE_GAP_ADDR_CYCLE_MODE_NONE, &gap_addr);
+	APP_ERROR_CHECK(err_code);
 
 	err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
 	APP_ERROR_CHECK(err_code);

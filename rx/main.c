@@ -186,9 +186,26 @@ static void process_data(uint8_t data)
 
 static void on_ble_evt(ble_evt_t *p_ble_evt)
 {
+	char buf[32];
+	ble_gap_addr_t *peer_addr;
+
 	switch (p_ble_evt->header.evt_id) {
 	case BLE_GAP_EVT_CONNECTED:
-		simple_uart_putstring((const uint8_t*) "Connected\r\n");
+		
+	peer_addr = &p_ble_evt->evt.gap_evt.params.connected.peer_addr;
+	sprintf(buf, "%02X %02X %02X %02X %02X %02X\r\n",
+			peer_addr->addr[0], peer_addr->addr[1], peer_addr->addr[2],
+			peer_addr->addr[3], peer_addr->addr[4], peer_addr->addr[5]);
+
+		simple_uart_putstring((const uint8_t*) "Connected to ");
+		simple_uart_putstring((const uint8_t*) buf);
+
+		if ((peer_addr->addr[0] != 0x5e) ||
+			(peer_addr->addr[2] != 0x36) ||
+			(peer_addr->addr[3] != 0x03) ||
+			(peer_addr->addr[4] != 0xc9) ||
+			(peer_addr->addr[5] != (0xc1 | 0xc0)))
+			sd_nvic_SystemReset();
 #ifdef ADV_BLINKING
 		app_timer_stop(m_advblink_timer);
 #endif
